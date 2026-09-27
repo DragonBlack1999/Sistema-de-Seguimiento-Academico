@@ -11,15 +11,34 @@ que falta para eso está al final.
 
 ## 0. Antes de tocar Railway
 
-**Decidir con qué datos se prueba.** Poner en internet la base real significa
+**La prueba va con datos inventados.** Poner en internet la base real sería
 publicar los datos de 402 menores de edad, con contraseñas que hoy son iguales
-al nombre de usuario. Las dos salidas razonables:
+al nombre de usuario. La base de prueba tiene el colegio entero —los 18 cursos,
+las 13 materias, las 216 asignaciones, los 637 bloques de horario y los 402
+estudiantes en su curso— con todos los nombres, carnets, RUDE, teléfonos y
+direcciones inventados, y encima el movimiento de tres semanas de clases.
 
-- **Datos de prueba**: los mismos cursos y materias, con nombres inventados. Se
-  puede probar todo sin exponer a nadie y sin apurar el cambio de contraseñas.
-- **Datos reales**: entonces, antes de dar la dirección a nadie, hay que
-  cambiar las contraseñas de docentes y obligar a cambiarla en el primer
-  ingreso.
+Se arma con dos comandos, sobre una copia de la base (nunca sobre la real, y
+los comandos se niegan si el nombre no lleva «prueba»):
+
+```
+createdb -U postgres -T seguimiento_academico seguimiento_prueba_publica
+set DB_NAME=seguimiento_prueba_publica
+venv\Scripts\python.exe manage.py anonimizar
+venv\Scripts\python.exe manage.py datos_de_ejemplo
+venv\Scripts\python.exe manage.py alertas_diarias
+```
+
+El primero cambia todo lo que señala a una persona; el segundo agrega familias,
+asistencia, notas y tareas; el tercero deja avisos pendientes para que las
+pantallas de la familia tengan algo que mostrar. `anonimizar` escribe además
+`cuentas_de_prueba.txt`, la lista de usuarios y contraseñas para repartir a
+quienes vayan a probar.
+
+> **Los archivos subidos no se anonimizan.** Lo que está en `media/` —fotos,
+> adjuntos, entregas— son archivos reales, y la base anonimizada simplemente
+> deja de apuntarlos. Al servidor de prueba **no se sube `media/` ni el
+> `archivos.zip` de ningún respaldo**.
 
 **Tener el código en un repositorio.** Railway despliega desde GitHub (o desde
 la consola con `railway up`). El repositorio va **privado**. El `.gitignore` ya
@@ -81,14 +100,18 @@ Railway, el servicio Postgres → **Variables** → copiar `DATABASE_PUBLIC_URL`
 
 ```
 set URL=postgresql://postgres:...@...proxy.rlwy.net:12345/railway
-"C:\Program Files\PostgreSQL\16\bin\pg_restore.exe" --no-owner --no-privileges -d "%URL%" "respaldos\2026-09-26_2252\base.dump"
+"C:\Program Files\PostgreSQL\16\bin\pg_restore.exe" --no-owner --no-privileges -d "%URL%" "respaldos\para-railway\2026-09-27_002113\base.dump"
 ```
+
+Ese archivo es la base de prueba ya armada: 402 estudiantes con nombres
+inventados, 815 cuentas (con sus familias), 6.030 marcas de asistencia, 1.171
+notas de trimestre y 18 tareas con sus entregas.
 
 `--no-owner` es necesario: el dueño de las tablas aquí es `academico_app`, un
 usuario que allá no existe.
 
-Los archivos subidos (`archivos.zip` del mismo respaldo) se suben aparte, si
-hacen falta para la prueba.
+No se sube ningún archivo de `media/`: son archivos reales y la base de prueba
+no los necesita.
 
 Para comprobar que llegó todo, comparar con el `informe.txt` de ese respaldo:
 

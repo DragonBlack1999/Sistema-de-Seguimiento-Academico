@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block titulo %}Tareas de {{ hijo.usuario.get_full_name }}{% endblock %}
+{% block contenido %}
+<h2>Tareas de {{ hijo.usuario.get_full_name }}</h2>
+{% if matricula %}<p class="text-muted">{{ matricula.curso }}</p>{% endif %}
+
+<table class="table table-striped bg-white shadow-sm mt-3">
+    <thead>
+        <tr>
+            <th>Trimestre</th><th>Materia</th><th>Tarea</th><th>Fecha límite</th>
+            <th class="text-center">Estado</th><th class="text-center">Nota</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for fila in filas %}
+        <tr>
+            <td>{{ fila.tarea.get_trimestre_display }}</td>
+            <td>{{ fila.tarea.asignacion.materia }}</td>
+            <td>{{ fila.tarea.titulo }}</td>
+            <td>{{ fila.tarea.fecha_entrega }}</td>
+            <td class="text-center">
+                {% if fila.entrega and fila.entrega.estado == 'ENTREGADA' %}
+                    <span class="badge bg-success">Entregada</span>
+                {% elif fila.entrega and fila.entrega.estado == 'ATRASADA' %}
+                    <span class="badge bg-warning text-dark">Con retraso</span>
+                {% elif fila.entrega and fila.entrega.estado == 'NO_ENTREGADA' %}
+                    <span class="badge bg-danger">No entregada</span>
+                {% elif fila.tarea.vencida %}
+                    <span class="badge bg-danger">Vencida</span>
+                {% else %}
+                    <span class="badge bg-secondary">Pendiente</span>
+                {% endif %}
+            </td>
+            <td class="text-center">
+                {% if fila.entrega and fila.entrega.nota is not None %}
+                    <strong>{{ fila.entrega.nota }}</strong> / 100
+                {% else %}
+                    <span class="text-muted">—</span>
+                {% endif %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="6" class="text-center text-muted">No hay tareas registradas.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<a href="{% url 'padres:panel' %}" class="btn btn-outline-secondary">Volver a mis hijos</a>
+{% endblock %}

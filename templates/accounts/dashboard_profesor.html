@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block titulo %}Panel del profesor{% endblock %}
+{% block nav_inicio %}activo{% endblock %}
+{% block contenido %}
+
+<h2 class="sa-saludo">Hola, {{ user.get_full_name|default:user.username }}</h2>
+<p class="sa-subsaludo">
+  {% if materias %}{{ materias|join:" · " }} · {% endif %}{{ asignaciones|length }} curso{{ asignaciones|length|pluralize }} a tu cargo
+</p>
+
+{% if por_calificar %}
+<div class="sa-resumen mt-3">
+  <div class="sa-aviso">
+    <span class="sa-aviso-icono" style="background:#fdf0e0;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c47f1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    </span>
+    <span class="sa-aviso-texto">
+      Tienes <strong>{{ por_calificar }} entrega{{ por_calificar|pluralize }}</strong> esperando calificación.
+    </span>
+  </div>
+</div>
+{% endif %}
+
+<div class="sa-titulillo">Mis materias asignadas</div>
+<table class="table">
+  <thead><tr><th>Materia</th><th>Curso</th><th>Gestión</th><th>Notas</th><th>Tareas</th></tr></thead>
+  <tbody>
+  {% for a in asignaciones %}
+    <tr>
+      <td>{{ a.materia }}</td>
+      <td>{{ a.curso }}</td>
+      <td>{{ a.gestion }}</td>
+      <td>
+        <div class="btn-group btn-group-sm">
+          <a class="btn btn-outline-primary" href="{% url 'calificaciones:registrar_notas' a.id 1 %}">T1</a>
+          <a class="btn btn-outline-primary" href="{% url 'calificaciones:registrar_notas' a.id 2 %}">T2</a>
+          <a class="btn btn-outline-primary" href="{% url 'calificaciones:registrar_notas' a.id 3 %}">T3</a>
+        </div>
+      </td>
+      <td><a class="btn btn-sm btn-primary" href="{% url 'tareas:lista_tareas' a.id %}">Gestionar</a></td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="text-center text-muted">No tienes materias asignadas todavía.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

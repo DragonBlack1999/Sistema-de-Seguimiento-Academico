@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block titulo %}Tareas{% endblock %}
+{% block estilos %}
+<style>
+  /* Las pestañas del diseño: mismas formas redondeadas que el resto */
+  .sa-pestanas { border-bottom: 2px solid var(--sa-borde); gap: .25rem; }
+  .sa-pestanas .nav-link {
+    border: 0; border-radius: var(--sa-radio-s) var(--sa-radio-s) 0 0;
+    color: #5c807a; font-weight: 700; padding: .6rem 1.1rem;
+    border-bottom: 3px solid transparent; margin-bottom: -2px;
+  }
+  .sa-pestanas .nav-link:hover { background: #e6f6f3; color: var(--sa-tinta); }
+  .sa-pestanas .nav-link.active {
+    background: none; color: var(--sa-tinta); border-bottom-color: var(--sa-verde);
+  }
+  .sa-pestanas .cuenta {
+    display: inline-block; min-width: 1.5rem; margin-left: .4rem; padding: 0 .35rem;
+    border-radius: 999px; background: #dff2ee; color: #1c7a70;
+    font-size: .75rem; line-height: 1.5rem; text-align: center;
+  }
+  .sa-pestanas .nav-link.active .cuenta { background: var(--sa-verde); color: #fff; }
+  @media (max-width: 575.98px) {
+    .sa-pestanas .nav-link { padding: .55rem .7rem; font-size: .9rem; }
+  }
+</style>
+{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+        <h2 class="mb-0">Tareas</h2>
+        <p class="text-muted mb-0">{{ asignacion.materia }} · {{ asignacion.curso }} · {{ total_matriculados }} estudiante(s)</p>
+    </div>
+    <a href="{% url 'tareas:crear_tarea' asignacion.id %}" class="btn btn-primary">Nueva tarea</a>
+</div>
+
+<ul class="nav sa-pestanas mt-4" role="tablist">
+    {% for pestana in pestanas %}
+    <li class="nav-item" role="presentation">
+        <a class="nav-link{% if pestana.activa %} active{% endif %}"
+           role="tab" aria-selected="{% if pestana.activa %}true{% else %}false{% endif %}"
+           href="?trimestre={{ pestana.valor }}">
+            {{ pestana.etiqueta }}
+            <span class="cuenta">{{ pestana.cuantas }}</span>
+        </a>
+    </li>
+    {% endfor %}
+</ul>
+
+<div class="card shadow-sm mt-3" style="border-top-left-radius:0;">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <strong>{{ etiqueta_trimestre }}</strong>
+        <a class="btn btn-sm btn-outline-success"
+           href="{% url 'calificaciones:registrar_notas' asignacion.id trimestre %}">
+            Ver la planilla de notas
+        </a>
+    </div>
+    <div class="card-body p-0">
+      {% comment %}
+        Seis columnas más los tres botones pueden no caber en la tarjeta: que se
+        desplace la tabla por dentro y no la página entera.
+      {% endcomment %}
+      <div class="table-responsive">
+        <table class="table table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>Tarea</th>
+                    <th>Fecha límite</th>
+                    <th class="text-center">Entregadas</th>
+                    <th class="text-center">Calificadas</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for tarea in tareas %}
+                <tr>
+                    <td>
+                        {{ tarea.titulo }}
+                        {% if not tarea.permite_archivo %}<span class="badge bg-light text-dark">sin archivo</span>{% endif %}
+                        {% if not tarea.permite_atraso %}<span class="badge bg-light text-dark">sin atrasos</span>{% endif %}
+                    </td>
+                    <td>
+                        {# "25 de agosto de 2026" se comía el ancho de dos columnas #}
+                        {{ tarea.fecha_entrega|date:"d/m/Y" }}
+                        {% if tarea.vencida %}<span class="badge bg-secondary">vencida</span>{% endif %}
+                    </td>
+                    <td class="text-center">{{ tarea.entregadas }} / {{ total_matriculados }}</td>
+                    <td class="text-center">{{ tarea.calificadas }} / {{ total_matriculados }}</td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a class="btn btn-outline-primary" href="{% url 'tareas:calificar_tarea' tarea.id %}">Calificar</a>
+                            <a class="btn btn-outline-secondary" href="{% url 'tareas:editar_tarea' tarea.id %}">Editar</a>
+                            <a class="btn btn-outline-danger" href="{% url 'tareas:eliminar_tarea' tarea.id %}">Eliminar</a>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">
+                    No hay tareas en el {{ etiqueta_trimestre|lower }}.
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+      </div>
+    </div>
+</div>
+{% endblock %}

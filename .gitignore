@@ -1,0 +1,18 @@
+venv/
+__pycache__/
+*.pyc
+.env
+db.sqlite3
+staticfiles/
+media/
+*.log
+.vscode/
+.idea/
+
+# Las copias de respaldo: datos reales, nunca junto al código
+respaldos/
+
+# Cosas del editor y de Word que no son del proyecto
+.claude/settings.local.json
+.claude/*.lock
+~$*

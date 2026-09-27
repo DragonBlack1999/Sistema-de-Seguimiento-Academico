@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block titulo %}Mi asistencia{% endblock %}
+{% block contenido %}
+<h2>Mi asistencia</h2>
+<p class="text-muted">Registro de tu entrada al colegio, día por día.</p>
+
+{% include 'asistencia/_resumen.html' with resumen=resumen %}
+
+<table class="table table-striped bg-white shadow-sm mt-3">
+    <thead><tr><th>Fecha</th><th class="text-center">Hora de llegada</th><th class="text-center">Estado</th></tr></thead>
+    <tbody>
+    {% for r in registros %}
+        <tr>
+            <td>{{ r.fecha|date:"l j \d\e F \d\e Y"|capfirst }}</td>
+            <td class="text-center font-monospace">{{ r.hora_llegada|time:"H:i"|default:"—" }}</td>
+            <td class="text-center">
+                {% include 'asistencia/_insignia.html' with registro=r %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="3" class="text-center text-muted py-4">No hay registros de asistencia todavía.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

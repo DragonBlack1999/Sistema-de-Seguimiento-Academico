@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block titulo %}Noticias{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center">
+    <h2>Noticias y actividades</h2>
+    {% if user.es_admin %}
+        <a href="{% url 'noticias:crear' %}" class="btn btn-primary">Publicar noticia</a>
+    {% endif %}
+</div>
+
+<div class="row g-3 mt-1">
+{% for noticia in noticias %}
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100 {% if noticia.fijada %}border-primary{% endif %}">
+            {% if noticia.imagen %}
+                <img src="{% url 'noticias:imagen' noticia.pk %}" class="card-img-top"
+                     alt="{{ noticia.titulo }}" style="max-height:220px; object-fit:cover;">
+            {% endif %}
+            <div class="card-body">
+                <div class="mb-2">
+                    <span class="badge {% if noticia.tipo == 'ACTIVIDAD' %}bg-success{% elif noticia.tipo == 'COMUNICADO' %}bg-warning text-dark{% else %}bg-primary{% endif %}">
+                        {{ noticia.get_tipo_display }}
+                    </span>
+                    <span class="badge bg-secondary">
+                        {% if noticia.es_general %}Todo el colegio{% else %}{{ noticia.curso }}{% endif %}
+                    </span>
+                    {% if noticia.fijada %}<span class="badge bg-info text-dark">Fijada</span>{% endif %}
+                    {% if not noticia.publicada %}<span class="badge bg-dark">Borrador</span>{% endif %}
+                </div>
+                <h5 class="card-title">{{ noticia.titulo }}</h5>
+                {% if noticia.fecha_evento %}
+                    <p class="text-muted small mb-1">Fecha de la actividad: {{ noticia.fecha_evento }}</p>
+                {% endif %}
+                <p class="card-text">{{ noticia.cuerpo|truncatewords:30 }}</p>
+                <a href="{% url 'noticias:detalle' noticia.pk %}" class="btn btn-sm btn-outline-primary">Leer más</a>
+            </div>
+            <div class="card-footer text-muted small">
+                {{ noticia.fecha_publicacion|date:"d/m/Y H:i" }} · {{ noticia.publicado_por.get_full_name|default:noticia.publicado_por.username }}
+            </div>
+        </div>
+    </div>
+{% empty %}
+    <div class="col-12">
+        <p class="text-muted">No hay noticias publicadas por ahora.</p>
+    </div>
+{% endfor %}
+</div>
+{% endblock %}

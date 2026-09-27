@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block titulo %}Panel del regente{% endblock %}
+{% block nav_inicio %}activo{% endblock %}
+{% block contenido %}
+
+<h2 class="sa-saludo">Hola, {{ user.get_full_name|default:user.username }}</h2>
+<p class="sa-subsaludo">Control de entrada · {{ hoy|date:"l j \d\e F \d\e Y"|capfirst }}</p>
+
+<div class="sa-titulillo">Cómo va la puerta</div>
+{% include 'comun/_avisos.html' %}
+
+<div class="sa-titulillo">Hoy</div>
+<div class="row g-3">
+  <div class="col-6 col-md-3">
+    <div class="card h-100" style="border-color:#bfe8e1 !important;"><div class="card-body text-center">
+      <div style="font-size:2rem; font-weight:800; line-height:1; color:#1c7a70;">{{ resumen.presentes }}</div>
+      <div class="small text-muted" style="font-weight:700;">Presentes</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100" style="border-color:#f6dcbc !important;"><div class="card-body text-center">
+      <div style="font-size:2rem; font-weight:800; line-height:1; color:var(--sa-aviso-tinta);">{{ resumen.atrasos }}</div>
+      <div class="small text-muted" style="font-weight:700;">Atrasos</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100" style="border-color:#f3cbc5 !important;"><div class="card-body text-center">
+      <div style="font-size:2rem; font-weight:800; line-height:1; color:var(--sa-error-tinta);">{{ resumen.faltas }}</div>
+      <div class="small text-muted" style="font-weight:700;">Faltas</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100" style="background:var(--sa-tinta); border-color:var(--sa-tinta) !important;"><div class="card-body text-center">
+      <div style="font-size:2rem; font-weight:800; line-height:1; color:#fff;">{{ resumen.sin_registrar }}</div>
+      <div class="small" style="font-weight:700; color:#9dc7c0;">Sin registrar</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="mt-4 d-flex flex-wrap gap-2">
+  <a href="{% url 'asistencia:puerta' %}" class="btn btn-primary btn-lg">Abrir el control de entrada</a>
+  <a href="{% url 'noticias:lista' %}" class="btn btn-outline-secondary">Noticias</a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% load l10n %}
+{% block titulo %}Registrar notas{% endblock %}
+{% block contenido %}
+<style>
+  .planilla { border-collapse: separate; border-spacing: 0; }
+  .planilla th, .planilla td { padding: .4rem .5rem; vertical-align: middle; }
+  .planilla thead th { font-size: .78rem; text-align: center; }
+  .planilla .dim-ser { background: #e6f6f3; }
+  .planilla .dim-saber { background: #fdf1e3; }
+  .planilla .dim-hacer { background: #eef0fd; }
+  .planilla .dim-extra { background: #f6f7f9; }
+  .planilla input { width: 4.6rem; text-align: center; }
+  .planilla .promedio { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .planilla .total { font-weight: 800; font-size: 1.05rem; }
+  .planilla .estudiante { min-width: 16rem; }
+  .planilla-scroll { overflow-x: auto; }
+  .marca-estudiante { font-size: .7rem; color: #2f7d5f; display: block; }
+  .marca-tarea { display: block; font-size: .68rem; font-weight: 600; color: #5b6ef5; }
+</style>
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div>
+        <h2 class="sa-saludo">Registrar notas</h2>
+        <p class="sa-subsaludo">{{ asignacion.materia }} · {{ asignacion.curso }}</p>
+    </div>
+    {% if cuantas_actividades %}
+    <a class="btn btn-success" href="{% url 'calificaciones:planilla_excel' asignacion.id trimestre %}">
+        Descargar esta planilla (Excel)
+    </a>
+    {% endif %}
+</div>
+
+<ul class="nav nav-pills mb-3">
+    {% for valor, etiqueta in trimestres %}
+        <li class="nav-item">
+            <a class="nav-link {% if valor == trimestre %}active{% endif %}"
+               href="{% url 'calificaciones:registrar_notas' asignacion.id valor %}">{{ etiqueta }}</a>
+        </li>
+    {% endfor %}
+</ul>
+
+<div class="alert alert-light border">
+    La nota del trimestre se calcula sola:
+    <strong>ser 10 + saber 45 + hacer 40 + autoevaluación 5</strong>, y los puntos
+    extracurriculares se suman aparte sin pasar de 100. Cada actividad se califica
+    sobre el máximo de su dimensión, en <strong>números enteros</strong>; la dimensión
+    es el promedio de sus actividades.
+    {% if cuantas_de_tareas %}
+        Las columnas marcadas como <strong>tarea</strong> se pueden calificar aquí o
+        desde la tarea: es la misma nota.
+    {% endif %}
+</div>
+
+{# Arriba, antes de la planilla: agregar y borrar columnas #}
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">Agregar una actividad</h5>
+                <form method="post" class="row g-2 align-items-end">
+                    {% csrf_token %}
+                    <div class="col-sm-4">
+                        <label class="form-label" for="dimensionNueva">Dimensión</label>
+                        <select class="form-select" id="dimensionNueva" name="dimension">
+                            {% for dimension in dimensiones %}
+                            <option value="{{ dimension.codigo }}">{{ dimension.nombre }} (sobre {{ dimension.maximo|floatformat:"0" }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-sm-5">
+                        <label class="form-label" for="nombreNuevo">Nombre</label>
+                        <input type="text" class="form-control" id="nombreNuevo" name="nombre" maxlength="60"
+                               placeholder="Práctico 1, Examen, Exposición" required>
+                    </div>
+                    <div class="col-sm-3">
+                        <button type="submit" name="accion" value="agregar_actividad" class="btn btn-outline-primary w-100">
+                            Agregar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">Borrar una actividad</h5>
+                {% if borrables %}
+                <form method="post" class="row g-2 align-items-end"
+                      onsubmit="return confirm('Se borrará la actividad con todas sus notas. ¿Seguro?');">
+                    {% csrf_token %}
+                    <div class="col-sm-8">
+                        <label class="form-label" for="actividadBorrar">Actividad</label>
+                        <select class="form-select" id="actividadBorrar" name="actividad_id">
+                            {% for actividad in borrables %}
+                            <option value="{{ actividad.id }}">{{ actividad.get_dimension_display }} · {{ actividad.etiqueta }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-sm-4">
+                        <button type="submit" name="accion" value="borrar_actividad" class="btn btn-outline-danger w-100">
+                            Borrar
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <p class="text-muted mb-0">
+                    {% if cuantas_de_tareas %}
+                        Aquí solo se borran las actividades que creaste a mano. Las que son
+                        tareas se quitan borrando la tarea.
+                    {% else %}
+                        Todavía no hay actividades para borrar.
+                    {% endif %}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if cuantas_actividades %}
+<form method="post" class="mt-4">
+    {% csrf_token %}
+    <div class="planilla-scroll">
+    <table class="table planilla bg-white shadow-sm align-middle">
+        <thead>
+            <tr>
+                <th rowspan="2" class="estudiante align-bottom text-start">Estudiante</th>
+                {% for dimension in dimensiones %}
+                    {% if dimension.actividades %}
+                    <th class="dim-{{ dimension.codigo|lower }}" colspan="{{ dimension.actividades|length }}">
+                        {{ dimension.nombre }} <span class="text-muted">(sobre {{ dimension.maximo|floatformat:"0" }})</span>
+                    </th>
+                    <th class="dim-{{ dimension.codigo|lower }}" rowspan="2">Prom.<br>{{ dimension.nombre|lower }}</th>
+                    {% endif %}
+                {% endfor %}
+                <th class="dim-extra" rowspan="2">Autoeval.<br><span class="text-muted">(0 a {{ maximo_autoevaluacion|floatformat:"0" }})</span></th>
+                <th class="dim-extra" rowspan="2">Extra<br><span class="text-muted">(0 a {{ maximo_extracurricular|floatformat:"0" }})</span></th>
+                <th class="dim-extra" rowspan="2">Nota del<br>trimestre</th>
+            </tr>
+            <tr>
+                {% for dimension in dimensiones %}
+                    {% for actividad in dimension.actividades %}
+                    <th class="dim-{{ dimension.codigo|lower }}">
+                        {{ actividad.etiqueta }}
+                        {% if actividad.tarea_asociada %}
+                            <a class="marca-tarea" href="{% url 'tareas:calificar_tarea' actividad.tarea_asociada.id %}">tarea</a>
+                        {% endif %}
+                    </th>
+                    {% endfor %}
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+        {% for fila in filas %}
+            <tr>
+                <td class="estudiante">
+                    {{ fila.matricula.estudiante.usuario.get_full_name }}
+                    <span class="d-block small text-muted font-monospace">{{ fila.matricula.estudiante.rude }}</span>
+                </td>
+                {% for grupo in fila.grupos %}
+                    {% if grupo.celdas %}
+                        {% for celda in grupo.celdas %}
+                        <td class="dim-{{ grupo.codigo|lower }}">
+                            <input type="number" step="1" min="0" max="{{ celda.actividad.maximo|unlocalize }}"
+                                   class="form-control form-control-sm"
+                                   name="p_{{ celda.actividad.id }}_{{ fila.matricula.estudiante_id }}"
+                                   value="{{ celda.valor|floatformat:"0" }}">
+                        </td>
+                        {% endfor %}
+                        {% if grupo.promedio != None %}
+                        <td class="dim-{{ grupo.codigo|lower }} promedio text-center">{{ grupo.promedio|floatformat:"0" }}</td>
+                        {% else %}
+                        <td class="dim-{{ grupo.codigo|lower }} text-center text-muted">—</td>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+                <td class="dim-extra">
+                    <input type="number" step="1" min="0" max="{{ maximo_autoevaluacion|unlocalize }}"
+                           class="form-control form-control-sm"
+                           name="auto_{{ fila.matricula.estudiante_id }}" value="{{ fila.autoevaluacion|floatformat:"0" }}">
+                    {% if fila.autoevaluacion_del_estudiante %}
+                        <span class="marca-estudiante">la puso el estudiante</span>
+                    {% endif %}
+                </td>
+                <td class="dim-extra">
+                    <input type="number" step="1" min="0" max="{{ maximo_extracurricular|unlocalize }}"
+                           class="form-control form-control-sm"
+                           name="extra_{{ fila.matricula.estudiante_id }}" value="{{ fila.extracurricular|floatformat:"0" }}">
+                </td>
+                <td class="dim-extra text-center total">
+                    {% if fila.nota and fila.nota.nota %}{{ fila.nota.nota|floatformat:"0" }}{% else %}—{% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="99" class="text-center text-muted py-4">No hay estudiantes matriculados en este curso.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    <button type="submit" name="accion" value="guardar" class="btn btn-primary mt-2">Guardar planilla</button>
+</form>
+{% else %}
+<div class="alert alert-warning mt-4">
+    Todavía no hay actividades en este trimestre. Agrega la primera arriba: por
+    ejemplo «Participación» en ser o «Examen» en saber. Las tareas que crees
+    aparecen solas como columnas de hacer.
+</div>
+{% endif %}
+{% endblock %}

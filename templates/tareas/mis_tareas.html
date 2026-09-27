@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block titulo %}Mis tareas{% endblock %}
+{% block contenido %}
+<h2>Mis tareas</h2>
+{% if matricula %}
+    <p class="text-muted">{{ matricula.curso }}</p>
+{% endif %}
+
+{% for grupo in grupos %}
+<div class="card shadow-sm mt-3">
+    <div class="card-header"><strong>{{ grupo.etiqueta }}</strong></div>
+    <div class="card-body p-0">
+        <table class="table table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>Materia</th>
+                    <th>Tarea</th>
+                    <th>Fecha límite</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-center">Nota</th>
+                    <th class="text-end"></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for fila in grupo.filas %}
+                <tr>
+                    <td>{{ fila.tarea.asignacion.materia }}</td>
+                    <td>{{ fila.tarea.titulo }}</td>
+                    <td>{{ fila.tarea.fecha_entrega }}</td>
+                    <td class="text-center">
+                        {% if fila.entrega and fila.entrega.estado == 'ENTREGADA' %}
+                            <span class="badge bg-success">Entregada</span>
+                        {% elif fila.entrega and fila.entrega.estado == 'ATRASADA' %}
+                            <span class="badge bg-warning text-dark">Entregada con retraso</span>
+                        {% elif fila.entrega and fila.entrega.estado == 'NO_ENTREGADA' %}
+                            <span class="badge bg-danger">No entregada</span>
+                        {% elif fila.tarea.vencida %}
+                            <span class="badge bg-danger">Vencida</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Pendiente</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if fila.entrega and fila.entrega.nota is not None %}
+                            <strong>{{ fila.entrega.nota }}</strong> / 40
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'tareas:detalle_tarea' fila.tarea.id %}">
+                            Ver / Entregar
+                        </a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="text-center text-muted">No tienes tareas en este trimestre.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% empty %}
+<p class="text-muted mt-3">No tienes una matrícula activa, así que todavía no hay tareas para mostrar.</p>
+{% endfor %}
+{% endblock %}

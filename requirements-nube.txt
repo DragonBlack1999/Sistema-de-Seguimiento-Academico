@@ -1,0 +1,10 @@
+# Lo que hace falta solo donde el sistema vive en internet.
+#
+# `pywebpush` es lo que empuja los avisos al celular. No entra en
+# requirements.txt porque una de sus dependencias (http-ece) no tiene paquete
+# precompilado, y la instalacion sin internet de la laptop fallaria. Alla no
+# hace falta: sin llaves VAPID el sistema no envia nada y funciona igual.
+#
+#     pip install -r requirements-nube.txt
+-r requirements.txt
+pywebpush==2.5.0

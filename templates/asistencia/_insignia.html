@@ -1,0 +1,4 @@
+{% if registro.estado == 'PRESENTE' %}<span class="badge bg-success">
+{% elif registro.estado == 'ATRASO' %}<span class="badge bg-warning text-dark">
+{% elif registro.estado == 'FALTA' %}<span class="badge bg-danger">
+{% else %}<span class="badge bg-info text-dark">{% endif %}{{ registro.get_estado_display }}</span>

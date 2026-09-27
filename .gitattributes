@@ -1,0 +1,2 @@
+# Los .bat los lee cmd.exe: siempre con saltos de linea de Windows
+*.bat text eol=crlf

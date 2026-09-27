@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block titulo %}Eliminar noticia{% endblock %}
+{% block contenido %}
+<h2>Eliminar noticia</h2>
+<div class="card shadow-sm mt-3" style="max-width: 640px;">
+    <div class="card-body">
+        <p>¿Seguro que quieres eliminar <strong>{{ noticia.titulo }}</strong>?</p>
+        <div class="alert alert-danger">Esta acción no se puede deshacer.</div>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+            <a href="{% url 'noticias:detalle' noticia.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

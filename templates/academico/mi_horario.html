@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block titulo %}Horario{% endblock %}
+
+{% block contenido %}
+<style>
+  .horario-tablero {
+    --c0: #2ec4b6; --c1: #f98f45; --c2: #f77fb7; --c3: #6c63ff;
+    --c4: #43b581; --c5: #ffb347; --c6: #9b7ede; --c7: #4cc9f0;
+    background: #e9fbf7;
+    border-radius: 22px;
+    padding: 24px;
+  }
+  .horario-scroll { overflow-x: auto; }
+  .horario-grilla {
+    display: grid;
+    grid-template-columns: 120px repeat(6, minmax(120px, 1fr));
+    gap: 10px;
+    min-width: 860px;
+  }
+  .horario-dia {
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    font-size: .82rem;
+    color: #12324a;
+    background: #fff;
+    border: 2px solid #2ec4b6;
+    border-radius: 999px;
+    padding: 10px 6px;
+  }
+  .horario-hora {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #5b6ef5; color: #fff;
+    border-radius: 14px; padding: 10px 6px;
+    font-size: .78rem; font-weight: 600; line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+  }
+  .horario-celda {
+    border-radius: 14px; padding: 10px 12px;
+    min-height: 62px;
+    display: flex; flex-direction: column; justify-content: center;
+    color: #12324a;
+  }
+  .horario-celda-vacia { background: #ffffff8c; }
+  .horario-materia { font-weight: 700; font-size: .86rem; line-height: 1.2; }
+  .horario-detalle { font-size: .74rem; opacity: .85; margin-top: 2px; }
+  .horario-recreo {
+    background: #ffffffcc; text-align: center; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; color: #4a6b7c;
+  }
+  /* El recreo cruza los seis días de una sola pieza */
+  .horario-banda { grid-column: span 6; }
+  .c0 { background: #2ec4b6; } .c1 { background: #f98f45; }
+  .c2 { background: #f77fb7; } .c3 { background: #a8a4ff; }
+  .c4 { background: #6fd7a8; } .c5 { background: #ffc978; }
+  .c6 { background: #c3b1f0; } .c7 { background: #8fdcf5; }
+</style>
+
+<h2>Horario</h2>
+{% for tablero in tableros %}
+  <div class="d-flex align-items-baseline gap-2 mt-4">
+    <h5 class="mb-0">{{ tablero.titulo }}</h5>
+    {% if tablero.subtitulo %}<span class="text-muted small">{{ tablero.subtitulo }}</span>{% endif %}
+  </div>
+
+  <div class="horario-tablero mt-2">
+    <div class="horario-scroll">
+      <div class="horario-grilla">
+        <div></div>
+        {% for codigo, nombre in dias %}<div class="horario-dia">{{ nombre }}</div>{% endfor %}
+
+        {% for fila in tablero.filas %}
+          <div class="horario-hora">
+            <span>{{ fila.nombre }}</span>
+          </div>
+
+          {% if fila.es_recreo %}
+            {# Una sola banda: repetir el nombre en las seis columnas no dice más #}
+            <div class="horario-celda horario-recreo horario-banda">{{ fila.nombre }}</div>
+          {% else %}
+          {% for celda in fila.celdas %}
+            {% if celda.clases %}
+              {% for clase in celda.clases %}
+                <div class="horario-celda c{{ clase.color }}">
+                  <div class="horario-materia">{{ clase.asignacion.materia }}</div>
+                  <div class="horario-detalle">
+                    {% if tablero.mostrar_curso %}
+                      {{ clase.asignacion.curso }}
+                    {% else %}
+                      {{ clase.asignacion.profesor.get_full_name }}
+                    {% endif %}
+                    {% if clase.aula %} · {{ clase.aula }}{% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="horario-celda horario-celda-vacia"></div>
+            {% endif %}
+          {% endfor %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% empty %}
+  <div class="alert alert-light border mt-3">No hay horario registrado todavía.</div>
+{% endfor %}
+{% endblock %}

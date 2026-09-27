@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block titulo %}Historial académico{% endblock %}
+{% block contenido %}
+<h2>Historial académico</h2>
+
+{% for item in gestiones %}
+<div class="card shadow-sm mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><strong>Gestión {{ item.gestion.anio }}</strong> — {{ item.curso }}</span>
+        {% if item.gestion.activa %}
+            <span class="badge bg-primary">Gestión actual</span>
+        {% else %}
+            <span class="badge bg-secondary">Gestión anterior</span>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>Materia</th>
+                    <th class="text-center">Trimestre 1</th>
+                    <th class="text-center">Trimestre 2</th>
+                    <th class="text-center">Trimestre 3</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-center">Promedio</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for fila in item.filas %}
+                <tr>
+                    <td>{{ fila.materia }}</td>
+                    <td class="text-center">{{ fila.t1 }}</td>
+                    <td class="text-center">{{ fila.t2 }}</td>
+                    <td class="text-center">{{ fila.t3 }}</td>
+                    <td class="text-center">
+                        {% if fila.promedio == '-' %}
+                            <span class="badge bg-secondary">Sin notas</span>
+                        {% elif fila.aprobado %}
+                            <span class="badge bg-success">Aprobado</span>
+                        {% else %}
+                            <span class="badge bg-danger">Reprobado</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center fw-bold">{{ fila.promedio }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="text-center text-muted">No hay notas registradas en esta gestión.</td></tr>
+            {% endfor %}
+            </tbody>
+            {% if item.totales %}
+            <tfoot>
+                <tr class="table-secondary fw-bold">
+                    <td>Totales</td>
+                    <td class="text-center">{{ item.totales.t1 }}</td>
+                    <td class="text-center">{{ item.totales.t2 }}</td>
+                    <td class="text-center">{{ item.totales.t3 }}</td>
+                    <td></td>
+                    <td class="text-center">{{ item.totales.promedio }}</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% empty %}
+<p class="text-muted mt-3">No tienes matrículas registradas todavía.</p>
+{% endfor %}
+{% endblock %}

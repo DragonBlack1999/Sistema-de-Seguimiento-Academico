@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% load l10n %}
+{% block titulo %}Tablero de dirección{% endblock %}
+{% block nav_tablero %}activo{% endblock %}
+
+{% block estilos %}
+<style>
+  /* Los gráficos se dibujan con CSS: sin librerías, funciona sin internet.
+     Colores de estado validados para daltonismo; el ámbar tiene poco contraste
+     sobre blanco, por eso todos los estados llevan además su etiqueta escrita. */
+  .tb { --presente:#2f9e6e; --atraso:#e8a33d; --falta:#d1544a; --licencia:#5b7fc4; }
+  body { background: var(--sa-neutro) !important; }
+
+  .tb-cifra { font-size: 2.4rem; font-weight: 800; line-height: 1; }
+  .tb-cifra-pie { font-size: .78rem; font-weight: 700; color: var(--sa-suave); }
+
+  /* Barras horizontales: rendimiento por materia */
+  .tb-barra { height: 26px; background: #eef2f1; border-radius: 8px; overflow: hidden; position: relative; }
+  .tb-barra-relleno { height: 100%; border-radius: 8px; transition: width .5s cubic-bezier(.22,1,.36,1); }
+  .tb-corte {
+    position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--sa-error-tinta);
+  }
+  .tb-corte-nota { position: absolute; top: -1.15rem; font-size: .62rem; font-weight: 800; color: var(--sa-error-tinta); transform: translateX(-50%); white-space: nowrap; }
+
+  /* Columnas apiladas: asistencia por día */
+  .tb-dias { display: flex; align-items: flex-end; gap: 3px; height: 150px; }
+  .tb-dia { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; min-width: 0; }
+  .tb-col { display: flex; flex-direction: column-reverse; height: 100%; border-radius: 5px; overflow: hidden; }
+  .tb-seg { width: 100%; }
+  /* 2px de separación entre segmentos, como pide la guía de gráficos */
+  .tb-seg + .tb-seg { border-top: 2px solid #fff; }
+  .tb-dia-etiqueta { font-size: .55rem; color: var(--sa-suave); text-align: center; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .tb-dia:hover .tb-col { outline: 2px solid var(--sa-tinta); outline-offset: 1px; border-radius: 5px; }
+
+  .tb-leyenda { display: flex; flex-wrap: wrap; gap: .9rem; font-size: .78rem; font-weight: 700; color: var(--sa-suave); }
+  .tb-punto { width: 11px; height: 11px; border-radius: 3px; display: inline-block; margin-right: .3rem; vertical-align: -1px; }
+
+  .tb-tabla td, .tb-tabla th { font-size: .86rem; }
+  .tb-chip {
+    font-size: .68rem; font-weight: 800; padding: 2px 8px; border-radius: 999px;
+    background: #eef2f1; color: #5b7d79; white-space: nowrap;
+  }
+  .tb-chip.grave { background: var(--sa-error-fondo); color: var(--sa-error-tinta); }
+  .tb-chip.medio { background: var(--sa-aviso-fondo); color: var(--sa-aviso-tinta); }
+</style>
+{% endblock %}
+
+{% block contenido %}
+<div class="tb">
+
+{% if sin_gestion %}
+  <h2 class="sa-saludo">Tablero de dirección</h2>
+  <div class="alert alert-warning mt-3">No hay ninguna gestión escolar registrada.</div>
+{% else %}
+
+<div class="d-flex justify-content-between align-items-end flex-wrap gap-2">
+  <div>
+    <h2 class="sa-saludo">Tablero de dirección</h2>
+    <p class="sa-subsaludo">Gestión {{ gestion.anio }} · {{ hoy|date:"l j \d\e F"|capfirst }}</p>
+  </div>
+  <a href="{% url 'accounts:dashboard_admin' %}" class="btn btn-outline-secondary">Volver al panel</a>
+</div>
+
+{# ─────────── cifras de cabecera ─────────── #}
+<div class="row g-3 mt-1">
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="tb-cifra">{{ cifras.estudiantes }}</div>
+      <div class="tb-cifra-pie">Estudiantes matriculados</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="tb-cifra">{{ cifras.promedio|default:"—" }}</div>
+      <div class="tb-cifra-pie">Promedio del colegio</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="tb-cifra">{% if cifras.asistencia is not None %}{{ cifras.asistencia }}%{% else %}—{% endif %}</div>
+      <div class="tb-cifra-pie">Asistencia, últimas 4 semanas</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100 {% if cifras.reprobando %}border-danger{% endif %}"><div class="card-body">
+      <div class="tb-cifra" {% if cifras.reprobando %}style="color:var(--sa-error-tinta);"{% endif %}>{{ cifras.reprobando }}</div>
+      <div class="tb-cifra-pie">Reprobando alguna materia</div>
+    </div></div>
+  </div>
+</div>
+
+{# ─────────── 1. quién necesita atención ─────────── #}
+<div class="sa-titulillo">Necesitan atención</div>
+<div class="card">
+  <div class="card-body">
+    {% if atencion %}
+      <p class="text-muted small mb-3">
+        Ordenados por urgencia, combinando faltas, materias reprobadas, citaciones y tareas vencidas.
+        {% if total_atencion > atencion|length %}
+          Se muestran {{ atencion|length }} de {{ total_atencion }}.
+        {% endif %}
+      </p>
+      <table class="table tb-tabla mb-0">
+        <thead>
+          <tr>
+            <th>Estudiante</th><th>Curso</th>
+            <th class="text-center">Faltas</th>
+            <th>Reprobando</th>
+            <th class="text-end">Señales</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for fila in atencion %}
+          <tr>
+            <td>{{ fila.estudiante.usuario.get_full_name }}</td>
+            <td class="small text-muted">{{ fila.curso }}</td>
+            <td class="text-center">
+              {% if fila.faltas >= 3 %}<span class="tb-chip grave">{{ fila.faltas }}</span>
+              {% elif fila.faltas %}<span class="tb-chip medio">{{ fila.faltas }}</span>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td>
+              {% for m in fila.reprobadas %}<span class="tb-chip grave">{{ m }}</span> {% empty %}<span class="text-muted">—</span>{% endfor %}
+            </td>
+            <td class="text-end">
+              {% if fila.citaciones %}<span class="tb-chip grave">{{ fila.citaciones }} citación{{ fila.citaciones|pluralize:"es" }}</span>{% endif %}
+              {% if fila.sin_entregar %}<span class="tb-chip medio">{{ fila.sin_entregar }} tarea{{ fila.sin_entregar|pluralize }} vencida{{ fila.sin_entregar|pluralize }}</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="d-flex align-items-center gap-3">
+        <span class="sa-aviso-icono" style="background:#e4f6ec;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2f7d5f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+        </span>
+        <span>Ningún estudiante tiene faltas, materias reprobadas ni citaciones pendientes.</span>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  {# ─────────── 2. rendimiento por materia ─────────── #}
+  <div class="col-12 col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h3 style="font-size:1rem; margin:0 0 .25rem;">Promedio por materia</h3>
+      <p class="text-muted small mb-4">De menor a mayor. La línea roja marca la nota de aprobación (51).</p>
+
+      {% for m in materias %}
+      <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-baseline mb-1">
+          <span style="font-weight:800; font-size:.9rem;">{{ m.materia }}</span>
+          <span style="font-weight:800; font-variant-numeric:tabular-nums;">{{ m.promedio }}</span>
+        </div>
+        <div class="tb-barra">
+          <div class="tb-barra-relleno" style="width:{{ m.porcentaje|unlocalize }}%; background:{% if m.aprueba %}var(--presente){% else %}var(--falta){% endif %};"></div>
+          <span class="tb-corte" style="left:51%;"><span class="tb-corte-nota">51</span></span>
+        </div>
+        <div class="small text-muted mt-1">
+          {{ m.estudiantes }} estudiante{{ m.estudiantes|pluralize }} ·
+          {% if m.reprobados %}<strong style="color:var(--sa-error-tinta);">{{ m.reprobados }} reprobando</strong>{% else %}ninguno reprobando{% endif %}
+        </div>
+      </div>
+      {% empty %}
+        <p class="text-muted mb-0">Todavía no hay notas registradas.</p>
+      {% endfor %}
+    </div></div>
+  </div>
+
+  {# ─────────── 3. asistencia por día ─────────── #}
+  <div class="col-12 col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h3 style="font-size:1rem; margin:0 0 .25rem;">Asistencia, últimas 4 semanas</h3>
+      <p class="text-muted small mb-3">Cada columna es un día de clase. Pasa el mouse para ver el detalle.</p>
+
+      <div class="tb-dias">
+        {% for d in asistencia %}
+        <div class="tb-dia" title="{{ d.fecha|date:'l j \d\e F' }} — {{ d.presentes }} presentes, {{ d.atrasos }} atrasos, {{ d.faltas }} faltas, {{ d.licencias }} licencias">
+          <div class="tb-col">
+            {% if d.alto_presentes %}<div class="tb-seg" style="height:{{ d.alto_presentes|unlocalize }}%; background:var(--presente);"></div>{% endif %}
+            {% if d.alto_atrasos %}<div class="tb-seg" style="height:{{ d.alto_atrasos|unlocalize }}%; background:var(--atraso);"></div>{% endif %}
+            {% if d.alto_licencias %}<div class="tb-seg" style="height:{{ d.alto_licencias|unlocalize }}%; background:var(--licencia);"></div>{% endif %}
+            {% if d.alto_faltas %}<div class="tb-seg" style="height:{{ d.alto_faltas|unlocalize }}%; background:var(--falta);"></div>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="d-flex justify-content-between mt-1">
+        <span class="tb-dia-etiqueta">{{ asistencia.0.fecha|date:"d/m" }}</span>
+        <span class="tb-dia-etiqueta">{% for d in asistencia %}{% if forloop.last %}{{ d.fecha|date:"d/m" }}{% endif %}{% endfor %}</span>
+      </div>
+
+      <div class="tb-leyenda mt-3">
+        <span><span class="tb-punto" style="background:var(--presente);"></span>Presente</span>
+        <span><span class="tb-punto" style="background:var(--atraso);"></span>Atraso</span>
+        <span><span class="tb-punto" style="background:var(--licencia);"></span>Licencia</span>
+        <span><span class="tb-punto" style="background:var(--falta);"></span>Falta</span>
+      </div>
+
+      {# La tabla es la alternativa accesible al gráfico #}
+      <details class="mt-3">
+        <summary class="small text-muted" style="cursor:pointer;">Ver los números</summary>
+        <table class="table tb-tabla mt-2 mb-0">
+          <thead><tr><th>Día</th><th class="text-center">Pres.</th><th class="text-center">Atr.</th><th class="text-center">Lic.</th><th class="text-center">Faltas</th><th class="text-end">Asistió</th></tr></thead>
+          <tbody>
+          {% for d in asistencia %}
+            <tr>
+              <td>{{ d.fecha|date:"D d/m" }}</td>
+              <td class="text-center">{{ d.presentes }}</td>
+              <td class="text-center">{{ d.atrasos }}</td>
+              <td class="text-center">{{ d.licencias }}</td>
+              <td class="text-center">{{ d.faltas }}</td>
+              <td class="text-end" style="font-weight:800;">{{ d.asistio }}%</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </details>
+    </div></div>
+  </div>
+</div>
+
+{# ─────────── 4. pendientes de gestión ─────────── #}
+<div class="sa-titulillo">Pendientes de gestión</div>
+<div class="sa-resumen">
+  {% for p in pendientes %}
+  <div class="sa-aviso">
+    <span class="sa-aviso-icono" style="background:{% if p.tono == 'urgente' %}var(--sa-error-fondo){% elif p.tono == 'atencion' %}#fdf0e0{% elif p.tono == 'bien' %}#e4f6ec{% else %}var(--sa-info-fondo){% endif %};">
+      {% if p.tono == 'urgente' %}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sa-error-tinta)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+      {% elif p.tono == 'atencion' %}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c47f1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      {% elif p.tono == 'bien' %}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2f7d5f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      {% else %}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sa-info-tinta)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+      {% endif %}
+    </span>
+    <span class="sa-aviso-texto">
+      {{ p.texto }}
+      {% if p.url_nombre %}<a href="{% url p.url_nombre %}" class="ms-1">Ir →</a>{% endif %}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+
+{% endif %}
+</div>
+{% endblock %}

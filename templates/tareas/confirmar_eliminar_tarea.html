@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block titulo %}Eliminar tarea{% endblock %}
+{% block contenido %}
+<h2>Eliminar tarea</h2>
+
+<div class="card shadow-sm mt-3" style="max-width: 640px;">
+    <div class="card-body">
+        <p>¿Seguro que quieres eliminar <strong>{{ tarea.titulo }}</strong>?</p>
+        <div class="alert alert-danger">
+            Se perderán <strong>{{ total_entregas }}</strong> entrega(s) y
+            <strong>{{ total_notas }}</strong> nota(s) ya registradas. Esta acción no se puede deshacer.
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+            <a href="{% url 'tareas:lista_tareas' tarea.asignacion_id %}" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

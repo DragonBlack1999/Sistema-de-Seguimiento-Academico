@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block titulo %}Mi perfil{% endblock %}
+{% block contenido %}
+<h2>Mi perfil</h2>
+
+<div class="row g-4 mt-1">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">Datos personales (no editables)</div>
+            <div class="card-body">
+                {% if estudiante.foto_perfil %}
+                    <img src="{{ estudiante.foto_perfil.url }}" alt="Foto de perfil" class="rounded mb-3" style="max-width:150px;">
+                {% endif %}
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">CI</dt><dd class="col-sm-7">{{ estudiante.usuario.ci|default:"-" }}</dd>
+                    <dt class="col-sm-5">Nombres</dt><dd class="col-sm-7">{{ estudiante.usuario.first_name|default:"-" }}</dd>
+                    <dt class="col-sm-5">Apellidos</dt><dd class="col-sm-7">{{ estudiante.usuario.last_name|default:"-" }}</dd>
+                    <dt class="col-sm-5">Fecha de nacimiento</dt><dd class="col-sm-7">{{ estudiante.fecha_nacimiento|default:"-" }}</dd>
+                    <dt class="col-sm-5">Género</dt><dd class="col-sm-7">{{ estudiante.get_genero_display|default:"-" }}</dd>
+                    <dt class="col-sm-5">Nacionalidad</dt><dd class="col-sm-7">{{ estudiante.nacionalidad|default:"-" }}</dd>
+                    <dt class="col-sm-5">Departamento</dt><dd class="col-sm-7">{{ estudiante.get_departamento_display|default:"-" }}</dd>
+                    <dt class="col-sm-5">Correo del padre/tutor</dt><dd class="col-sm-7">{{ estudiante.email_tutor|default:"-" }}</dd>
+                </dl>
+                <p class="text-muted small mt-3 mb-0">Si algún dato de esta sección es incorrecto, solicita la corrección a administración.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">Editar mis datos</div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <button type="submit" class="btn btn-primary mt-2">Guardar cambios</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

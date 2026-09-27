@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load l10n %}
+{% block titulo %}Asistencia de capacitación{% endblock %}
+{% block estilos %}
+<style>
+  /* En el celular la tabla del diseño se desplaza en horizontal y cortaba el
+     botón "Falta". Con solo dos columnas cabe entera si el nombre puede partirse.
+     El selector lleva `.table` delante para ganarle en especificidad a la regla
+     general de la hoja de estilos. */
+  @media (max-width: 767.98px) {
+    .table.capacitacion-lista { white-space: normal; }
+    .table.capacitacion-lista th,
+    .table.capacitacion-lista td { padding: .6rem .5rem; }
+    .table.capacitacion-lista .btn { padding-left: .7rem; padding-right: .7rem; }
+  }
+</style>
+{% endblock %}
+{% block contenido %}
+
+{% if sin_gestion %}
+  <h2>Asistencia de capacitación</h2>
+  <div class="alert alert-warning mt-3">
+    No hay ninguna gestión escolar registrada. Créala antes de tomar asistencia.
+  </div>
+{% else %}
+
+<h2>Asistencia de capacitación</h2>
+<p class="text-muted">
+  Cursos que pasan clases de capacitación y no entran por la puerta con el resto del colegio.
+</p>
+
+<form method="get" class="card bg-white shadow-sm p-3 mt-3">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label small text-muted mb-1">Fecha</label>
+      <input type="date" name="fecha" value="{{ fecha|date:'Y-m-d' }}" class="form-control">
+    </div>
+    <div class="col-md-5">
+      <label class="form-label small text-muted mb-1">Curso</label>
+      <select name="curso" class="form-select">
+        <option value="">— Elige un curso —</option>
+        {% for c in cursos %}
+          <option value="{{ c.pk|unlocalize }}" {% if curso and c.pk == curso.pk %}selected{% endif %}>
+            {{ c }}{% for d in c.dias_capacitacion.all %}{% if forloop.first %} · {% endif %}{{ d.get_dia_display }}{% if not forloop.last %}, {% endif %}{% endfor %}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-primary w-100">Ver lista</button>
+    </div>
+  </div>
+</form>
+
+{% if del_dia %}
+  <div class="alert alert-info mt-3 mb-0 py-2">
+    Ese día tienen capacitación:
+    {% for c in del_dia %}<strong>{{ c }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}.
+  </div>
+{% else %}
+  <div class="alert alert-secondary mt-3 mb-0 py-2">
+    Ningún curso tiene capacitación programada para esa fecha. Puedes elegir uno igualmente
+    si se trata de una clase repuesta.
+  </div>
+{% endif %}
+
+{% if curso %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4">
+  <div>
+    <strong>{{ curso }}</strong>
+    <span class="d-block small text-muted">
+      Lista del {{ fecha|date:"l j \d\e F" }}
+    </span>
+  </div>
+  <a class="btn btn-outline-secondary"
+     href="{% url 'asistencia:capacitacion_excel' %}?curso={{ curso.pk|unlocalize }}">
+    Descargar en Excel
+  </a>
+</div>
+<p class="small text-muted mb-0">
+  La planilla trae todo el año: una hoja de resumen y una hoja por cada mes con clases.
+</p>
+
+<form method="post" class="mt-3">
+  {% csrf_token %}
+  <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
+  <input type="hidden" name="curso" value="{{ curso.pk|unlocalize }}">
+
+  <table class="table capacitacion-lista bg-white shadow-sm align-middle">
+    <thead>
+      <tr>
+        <th>Estudiante</th>
+        <th class="text-end" style="width:230px;">Asistencia</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for fila in filas %}
+      {% with id=fila.matricula.estudiante_id|unlocalize nombre=fila.matricula.estudiante.usuario.get_full_name %}
+      <tr>
+        <td>
+          {{ nombre }}
+          <span class="d-block small text-muted font-monospace">{{ fila.matricula.estudiante.rude }}</span>
+        </td>
+        <td class="text-end">
+          <div class="btn-group" role="group" aria-label="Asistencia de {{ nombre }}">
+            <input type="radio" class="btn-check" autocomplete="off"
+                   name="estado_{{ id }}" id="presente-{{ id }}" value="PRESENTE"
+                   {% if fila.estado == 'PRESENTE' %}checked{% endif %}>
+            <label class="btn btn-outline-success" for="presente-{{ id }}">Presente</label>
+
+            <input type="radio" class="btn-check" autocomplete="off"
+                   name="estado_{{ id }}" id="falta-{{ id }}" value="FALTA"
+                   {% if fila.estado == 'FALTA' %}checked{% endif %}>
+            <label class="btn btn-outline-danger" for="falta-{{ id }}">Falta</label>
+          </div>
+          {% if fila.otro_estado %}
+            <div class="small text-muted mt-1">
+              Hoy figura como <strong>{{ fila.otro_estado }}</strong>. Se mantiene así si no eliges.
+            </div>
+          {% endif %}
+        </td>
+      </tr>
+      {% endwith %}
+    {% empty %}
+      <tr><td colspan="2" class="text-center text-muted py-4">
+        Este curso no tiene estudiantes con matrícula activa.
+      </td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if filas %}
+    <button type="submit" class="btn btn-primary">Guardar asistencia</button>
+    <span class="text-muted small ms-2">
+      Todos vienen marcados como presentes: solo cambia a los que faltaron y guarda.
+    </span>
+  {% endif %}
+</form>
+{% endif %}
+
+{% endif %}
+{% endblock %}

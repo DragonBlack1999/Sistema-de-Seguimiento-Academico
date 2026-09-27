@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block titulo %}Mi panel{% endblock %}
+{% block nav_inicio %}activo{% endblock %}
+{% block contenido %}
+
+{% if not estudiante %}
+  <div class="alert alert-warning">
+    Tu usuario no tiene un perfil de estudiante asociado. Contacta a administración.
+  </div>
+{% else %}
+
+<h2 class="sa-saludo">¡Hola, {{ estudiante.usuario.first_name|default:estudiante.usuario.get_full_name }}!</h2>
+<p class="sa-subsaludo">{{ estudiante.curso_actual|default:"Sin curso asignado" }} · RUDE {{ estudiante.rude }}</p>
+
+<div class="sa-titulillo">Para esta semana</div>
+{% include 'comun/_avisos.html' %}
+
+<div class="sa-titulillo">Mis secciones</div>
+<div class="sa-accesos">
+  <a class="sa-acceso verde" href="{% url 'calificaciones:mis_notas' %}">
+    <svg class="sa-acceso-icono" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <span class="sa-acceso-nombre">Mis notas</span>
+    <span class="sa-acceso-dato">{{ promedio|default:"—" }}</span>
+    <span class="sa-acceso-pie">promedio
+      <svg class="sa-acceso-flecha" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+    </span>
+  </a>
+
+  <a class="sa-acceso naranja" href="{% url 'tareas:mis_tareas' %}">
+    <svg class="sa-acceso-icono" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    <span class="sa-acceso-nombre">Mis tareas</span>
+    <span class="sa-acceso-dato">{{ tareas_pendientes }}</span>
+    <span class="sa-acceso-pie">por entregar
+      <svg class="sa-acceso-flecha" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+    </span>
+  </a>
+
+  <a class="sa-acceso azul" href="{% url 'asistencia:mi_asistencia' %}">
+    <svg class="sa-acceso-icono" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    <span class="sa-acceso-nombre">Mi asistencia</span>
+    <span class="sa-acceso-dato">{{ faltas }}</span>
+    <span class="sa-acceso-pie">faltas este año
+      <svg class="sa-acceso-flecha" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+    </span>
+  </a>
+
+  <a class="sa-acceso rosa" href="{% url 'academico:mi_horario' %}">
+    <svg class="sa-acceso-icono" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    <span class="sa-acceso-nombre">Mi horario</span>
+    <span class="sa-acceso-dato" style="font-size:1.05rem; margin-top:.4rem;">Ver semana</span>
+    <span class="sa-acceso-pie">clases y recreos
+      <svg class="sa-acceso-flecha" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+    </span>
+  </a>
+</div>
+
+<div class="sa-titulillo">Mis citaciones</div>
+{% if citaciones %}
+  <div class="d-flex flex-column gap-2">
+    {% for c in citaciones %}
+    <div class="sa-fila">
+      {% if c.estado == 'PENDIENTE' %}<span class="badge bg-warning">Pendiente</span>
+      {% elif c.estado == 'ATENDIDA' %}<span class="badge bg-success">Atendida</span>
+      {% else %}<span class="badge bg-secondary">{{ c.get_estado_display }}</span>{% endif %}
+      <div class="flex-grow-1">
+        <div style="font-weight:700;">{{ c.motivo }}</div>
+        <div class="small text-muted">
+          {{ c.fecha|date:"l j \d\e F"|capfirst }}{% if c.hora %} · {{ c.hora|time:"H:i" }}{% endif %}
+          {% if c.lugar %} · {{ c.lugar }}{% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-secondary mb-0">No tienes citaciones registradas.</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

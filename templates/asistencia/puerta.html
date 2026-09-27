@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% block titulo %}Control de entrada{% endblock %}
+{% block contenido %}
+
+{% if sin_gestion %}
+  <h2>Control de entrada</h2>
+  <div class="alert alert-warning mt-3">
+    No hay ninguna gestión escolar registrada. Un administrador debe crearla antes de tomar asistencia.
+  </div>
+{% else %}
+
+<style>
+  .puerta-fila { transition: background-color .25s ease; }
+  .puerta-fila.recien-marcado { background-color: #d1e7dd !important; }
+  .puerta-buscador { position: sticky; top: 0; z-index: 5; background: #f8f9fa; padding: 12px 0; }
+
+  /* El desplazamiento de la fila al pasar el mouse creaba un contexto de
+     apilado que encerraba el menú de estados: los botones de las filas de
+     abajo se dibujaban encima. Aquí la fila no se mueve.
+
+     Va con !important a propósito: la regla del diseño es
+     `.table > tbody > tr:hover`, más específica que cualquier selector de
+     una sola clase, y ganaba en silencio. */
+  .puerta-fila:hover { transform: none !important; }
+  .puerta-fila .dropdown-menu { z-index: 1080; }
+</style>
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+  <div>
+    <h2 class="mb-0">Control de entrada</h2>
+    <p class="text-muted mb-0">
+      {{ fecha|date:"l j \d\e F \d\e Y" }} · Hora límite de entrada: <strong>{{ hora_limite|time:"H:i" }}</strong>
+      <span class="d-block small">Después de esa hora, la entrada se marca como atraso automáticamente.</span>
+    </p>
+  </div>
+  <form method="get" class="d-flex align-items-center gap-2">
+    <label class="form-label mb-0 small text-muted">Ver otro día</label>
+    <input type="date" name="fecha" value="{{ fecha|date:'Y-m-d' }}" class="form-control form-control-sm" style="width:auto;">
+    <button class="btn btn-sm btn-outline-secondary">Ir</button>
+  </form>
+</div>
+
+
+<div class="row g-2 mt-3">
+  {% with r=resumen %}
+  <div class="col"><div class="card text-center border-success"><div class="card-body py-2">
+    <div class="h4 mb-0">{{ r.presentes }}</div><small class="text-muted">Presentes</small>
+  </div></div></div>
+  <div class="col"><div class="card text-center border-warning"><div class="card-body py-2">
+    <div class="h4 mb-0">{{ r.atrasos }}</div><small class="text-muted">Atrasos</small>
+  </div></div></div>
+  <div class="col"><div class="card text-center border-danger"><div class="card-body py-2">
+    <div class="h4 mb-0">{{ r.faltas }}</div><small class="text-muted">Faltas</small>
+  </div></div></div>
+  <div class="col"><div class="card text-center border-info"><div class="card-body py-2">
+    <div class="h4 mb-0">{{ r.licencias }}</div><small class="text-muted">Licencias</small>
+  </div></div></div>
+  <div class="col"><div class="card text-center"><div class="card-body py-2">
+    <div class="h4 mb-0" id="contadorPendientes">{{ r.sin_registrar }}</div><small class="text-muted">Sin registrar</small>
+  </div></div></div>
+  {% endwith %}
+</div>
+
+<div class="puerta-buscador mt-3">
+  <form method="get" class="input-group input-group-lg shadow-sm">
+    <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
+    <input type="search" name="q" value="{{ consulta }}" autofocus class="form-control"
+           placeholder="Escribe el nombre, apellido o RUDE del estudiante que entra"
+           aria-label="Buscar estudiante">
+    <button class="btn btn-primary" type="submit">Buscar</button>
+    {% if consulta %}
+      <a class="btn btn-outline-secondary" href="{% url 'asistencia:puerta' %}?fecha={{ fecha|date:'Y-m-d' }}">Ver todos</a>
+    {% endif %}
+  </form>
+</div>
+
+<table class="table bg-white shadow-sm mt-3 align-middle">
+  <thead>
+    <tr>
+      <th>Estudiante</th>
+      <th>Curso</th>
+      <th class="text-center">Estado</th>
+      <th class="text-center">Hora</th>
+      <th class="text-end">Registrar</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for fila in filas %}
+    <tr class="puerta-fila" data-estudiante="{{ fila.matricula.estudiante.pk }}">
+      <td>
+        {{ fila.matricula.estudiante.usuario.get_full_name }}
+        <span class="d-block small text-muted font-monospace">{{ fila.matricula.estudiante.rude }}</span>
+      </td>
+      <td class="small">{{ fila.matricula.curso }}</td>
+      <td class="text-center celda-estado">
+        {% if fila.asistencia %}
+          {% if fila.asistencia.estado == 'PRESENTE' %}<span class="badge bg-success">
+          {% elif fila.asistencia.estado == 'ATRASO' %}<span class="badge bg-warning text-dark">
+          {% elif fila.asistencia.estado == 'FALTA' %}<span class="badge bg-danger">
+          {% else %}<span class="badge bg-info text-dark">{% endif %}
+          {{ fila.asistencia.get_estado_display }}</span>
+        {% else %}
+          <span class="badge bg-light text-secondary">Sin registrar</span>
+        {% endif %}
+      </td>
+      <td class="text-center celda-hora font-monospace">
+        {{ fila.asistencia.hora_llegada|time:"H:i"|default:"—" }}
+      </td>
+      <td class="text-end">
+        <button type="button" class="btn btn-sm btn-success btn-entrada">Marcar entrada</button>
+        <div class="btn-group btn-group-sm ms-1">
+          <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            Otro
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% for valor, etiqueta in estados %}
+              <li><button type="button" class="dropdown-item btn-estado" data-estado="{{ valor }}">{{ etiqueta }}</button></li>
+            {% endfor %}
+          </ul>
+        </div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="text-center text-muted py-4">
+      {% if consulta %}
+        No se encontró ningún estudiante para <strong>{{ consulta }}</strong>.
+      {% else %}
+        No hay estudiantes con matrícula activa en esta gestión.
+      {% endif %}
+    </td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<form method="post" action="{% url 'asistencia:cerrar' %}"
+      onsubmit="return confirm('Se marcará como FALTA a todos los que no fueron registrados hoy. ¿Continuar?');">
+  {% csrf_token %}
+  <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
+  <button type="submit" class="btn btn-outline-danger">Cerrar el día</button>
+  <span class="text-muted small ms-2">
+    Úsalo cuando ya no entre nadie más: los que quedaron sin registrar pasan a falta.
+  </span>
+</form>
+
+<script>
+(function () {
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const fecha = "{{ fecha|date:'Y-m-d' }}";
+  const pendientes = document.getElementById('contadorPendientes');
+
+  const CLASES = {
+    PRESENTE: 'badge bg-success',
+    ATRASO:   'badge bg-warning text-dark',
+    FALTA:    'badge bg-danger',
+    LICENCIA: 'badge bg-info text-dark',
+  };
+
+  async function marcar(fila, estado) {
+    const id = fila.dataset.estudiante;
+    const cuerpo = new URLSearchParams({fecha: fecha});
+    if (estado) cuerpo.append('estado', estado);
+
+    const eraNuevo = fila.querySelector('.celda-estado').textContent.trim() === 'Sin registrar';
+
+    try {
+      const respuesta = await fetch(`/asistencia/puerta/marcar/${id}/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded'},
+        body: cuerpo,
+      });
+      if (!respuesta.ok) { alert('No se pudo registrar. Revisa tu sesión.'); return; }
+      const datos = await respuesta.json();
+
+      const insignia = document.createElement('span');
+      insignia.className = CLASES[datos.estado] || 'badge bg-secondary';
+      insignia.textContent = datos.estado_texto;
+      const celda = fila.querySelector('.celda-estado');
+      celda.replaceChildren(insignia);
+
+      fila.querySelector('.celda-hora').textContent = datos.hora || '—';
+
+      fila.classList.add('recien-marcado');
+      setTimeout(() => fila.classList.remove('recien-marcado'), 1200);
+
+      if (eraNuevo && pendientes) {
+        pendientes.textContent = Math.max(0, parseInt(pendientes.textContent, 10) - 1);
+      }
+      if (datos.aviso) alert(datos.aviso);
+    } catch (error) {
+      alert('Sin conexión con el servidor. Vuelve a intentar.');
+    }
+  }
+
+  document.querySelectorAll('.puerta-fila').forEach(function (fila) {
+    fila.querySelector('.btn-entrada').addEventListener('click', () => marcar(fila, null));
+    fila.querySelectorAll('.btn-estado').forEach(function (boton) {
+      boton.addEventListener('click', () => marcar(fila, boton.dataset.estado));
+    });
+  });
+
+  // En móvil la tabla se desplaza en horizontal y recortaría el menú de
+  // estados. Posicionándolo respecto a la ventana, se sale del recorte.
+  // Se espera a DOMContentLoaded porque este bloque va antes del de Bootstrap.
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.puerta-fila [data-bs-toggle="dropdown"]').forEach(function (boton) {
+      bootstrap.Dropdown.getOrCreateInstance(boton, {
+        popperConfig: (predeterminado) => ({ ...predeterminado, strategy: 'fixed' }),
+      });
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block titulo %}Notas de {{ hijo.usuario.get_full_name }}{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center">
+    <div>
+        <h2>Notas de {{ hijo.usuario.get_full_name }}</h2>
+        <p class="text-muted mb-0">{{ hijo.curso_actual|default:"Sin curso asignado" }} · Gestión {{ gestion.anio|default:"—" }}</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'comunicaciones:boletin_estudiante' hijo.pk %}">
+        Descargar boletín PDF
+    </a>
+</div>
+
+<table class="table table-striped bg-white shadow-sm mt-3">
+    <thead>
+        <tr>
+            <th>Materia</th>
+            <th class="text-center">Trimestre 1</th>
+            <th class="text-center">Trimestre 2</th>
+            <th class="text-center">Trimestre 3</th>
+            <th class="text-center">Estado</th>
+            <th class="text-center">Promedio</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for fila in filas %}
+        <tr>
+            <td>
+                {{ fila.materia }}
+                <button class="btn btn-link btn-sm p-0 d-block" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#desglose{{ forloop.counter }}"
+                        aria-expanded="false" aria-controls="desglose{{ forloop.counter }}">
+                    ver cómo se calcula
+                </button>
+            </td>
+            <td class="text-center">{{ fila.t1|default_if_none:"—" }}</td>
+            <td class="text-center">{{ fila.t2|default_if_none:"—" }}</td>
+            <td class="text-center">{{ fila.t3|default_if_none:"—" }}</td>
+            <td class="text-center">
+                {% if fila.promedio == '-' %}
+                    <span class="badge bg-secondary">Sin notas</span>
+                {% elif fila.aprobado %}
+                    <span class="badge bg-success">Aprobado</span>
+                {% else %}
+                    <span class="badge bg-danger">Reprobado</span>
+                {% endif %}
+            </td>
+            <td class="text-center fw-bold">{{ fila.promedio|default_if_none:"—" }}</td>
+        </tr>
+        <tr class="collapse" id="desglose{{ forloop.counter }}">
+            <td colspan="6" class="bg-light">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr class="small text-muted">
+                            <th>Trimestre</th>
+                            <th class="text-center">Ser<br>(10)</th>
+                            <th class="text-center">Saber<br>(45)</th>
+                            <th class="text-center">Hacer<br>(40)</th>
+                            <th class="text-center">Autoevaluación<br>(5)</th>
+                            <th class="text-center">Extra<br>(hasta 5)</th>
+                            <th class="text-center">Nota</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for nota in fila.detalle %}
+                        <tr>
+                            <td>Trimestre {{ forloop.counter }}</td>
+                            {% if nota %}
+                                <td class="text-center">{{ nota.ser|default_if_none:"—" }}</td>
+                                <td class="text-center">{{ nota.saber|default_if_none:"—" }}</td>
+                                <td class="text-center">{{ nota.hacer|default_if_none:"—" }}</td>
+                                <td class="text-center">{{ nota.autoevaluacion|default_if_none:"—" }}</td>
+                                <td class="text-center">{{ nota.extracurricular|default_if_none:"—" }}</td>
+                                <td class="text-center fw-bold">{{ nota.nota }}</td>
+                            {% else %}
+                                <td colspan="6" class="text-center text-muted">Todavía sin notas</td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="6" class="text-center text-muted">Todavía no hay notas registradas.</td></tr>
+    {% endfor %}
+    </tbody>
+    {% if totales %}
+    <tfoot>
+        <tr class="table-secondary fw-bold">
+            <td>Totales</td>
+            <td class="text-center">{{ totales.t1|default_if_none:"—" }}</td>
+            <td class="text-center">{{ totales.t2|default_if_none:"—" }}</td>
+            <td class="text-center">{{ totales.t3|default_if_none:"—" }}</td>
+            <td></td>
+            <td class="text-center">{{ totales.promedio|default_if_none:"—" }}</td>
+        </tr>
+    </tfoot>
+    {% endif %}
+</table>
+
+<p class="text-muted small">
+    Cada trimestre se arma con ser (10), saber (45), hacer (40) y la autoevaluación
+    del estudiante (5). Las actividades extracurriculares suman hasta 5 puntos más,
+    sin pasar de 100.
+</p>
+
+<a href="{% url 'padres:panel' %}" class="btn btn-outline-secondary">Volver a mis hijos</a>
+{% endblock %}

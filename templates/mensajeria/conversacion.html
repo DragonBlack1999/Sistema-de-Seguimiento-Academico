@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block titulo %}Chat con {{ otro.get_full_name }}{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-0">{{ otro.get_full_name|default:otro.username }}</h2>
+        <span class="text-muted">{{ otro.get_rol_display }}</span>
+    </div>
+    <a href="{% url 'mensajeria:bandeja' %}" class="btn btn-outline-secondary">Volver</a>
+</div>
+
+<div id="hilo" class="bg-white shadow-sm rounded p-3 mt-3"
+     style="height:55vh; overflow-y:auto;"
+     data-url-nuevos="{{ url_nuevos }}" data-ultimo-id="{{ ultimo_id }}">
+    {% for mensaje in mensajes %}
+    <div class="d-flex mb-2 {% if mensaje.autor_id == user.pk %}justify-content-end{% endif %}">
+        <div class="p-2 px-3 rounded-3 {% if mensaje.autor_id == user.pk %}bg-primary text-white{% else %}bg-light{% endif %}"
+             style="max-width:75%;">
+            {% if mensaje.cuerpo %}<div style="white-space:pre-wrap;">{{ mensaje.cuerpo }}</div>{% endif %}
+            {% if mensaje.archivo %}
+                <a class="small {% if mensaje.autor_id == user.pk %}text-white{% endif %}"
+                   href="{% url 'mensajeria:descargar_adjunto' mensaje.pk %}">
+                    📎 {{ mensaje.archivo_nombre }}
+                </a>
+            {% endif %}
+            <div class="small {% if mensaje.autor_id == user.pk %}text-white-50{% else %}text-muted{% endif %}">
+                {{ mensaje.fecha_envio|date:"d/m/Y H:i" }}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <p id="vacio" class="text-center text-muted my-5">Todavía no hay mensajes. Escribe el primero.</p>
+    {% endfor %}
+</div>
+
+<form method="post" enctype="multipart/form-data" class="mt-3">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-warning py-2">{{ form.non_field_errors }}</div>{% endif %}
+    {{ form.cuerpo }}
+    {% if form.archivo.errors %}<div class="text-danger small mt-1">{{ form.archivo.errors }}</div>{% endif %}
+    <div class="d-flex justify-content-between align-items-center mt-2">
+        <div>
+            <label class="form-label small text-muted mb-1">{{ form.archivo.label }}</label>
+            {{ form.archivo }}
+        </div>
+        <button type="submit" class="btn btn-primary">Enviar</button>
+    </div>
+</form>
+
+<script>
+(function () {
+    const hilo = document.getElementById('hilo');
+    if (!hilo) return;
+    hilo.scrollTop = hilo.scrollHeight;
+
+    const urlNuevos = hilo.dataset.urlNuevos;
+    const soyYo = 'justify-content-end';
+    let ultimoId = parseInt(hilo.dataset.ultimoId, 10) || 0;
+
+    function agregar(mensaje) {
+        const fila = document.createElement('div');
+        fila.className = 'd-flex mb-2' + (mensaje.es_mio ? ' ' + soyYo : '');
+
+        const burbuja = document.createElement('div');
+        burbuja.className = 'p-2 px-3 rounded-3 ' + (mensaje.es_mio ? 'bg-primary text-white' : 'bg-light');
+        burbuja.style.maxWidth = '75%';
+
+        if (mensaje.cuerpo) {
+            const cuerpo = document.createElement('div');
+            cuerpo.style.whiteSpace = 'pre-wrap';
+            // textContent, nunca innerHTML: el cuerpo lo escribe un usuario.
+            cuerpo.textContent = mensaje.cuerpo;
+            burbuja.appendChild(cuerpo);
+        }
+        if (mensaje.adjunto_url) {
+            const enlace = document.createElement('a');
+            enlace.className = 'small' + (mensaje.es_mio ? ' text-white' : '');
+            enlace.href = mensaje.adjunto_url;
+            enlace.textContent = '📎 ' + mensaje.adjunto_nombre;
+            burbuja.appendChild(enlace);
+        }
+        const fecha = document.createElement('div');
+        fecha.className = 'small ' + (mensaje.es_mio ? 'text-white-50' : 'text-muted');
+        fecha.textContent = mensaje.fecha;
+        burbuja.appendChild(fecha);
+
+        fila.appendChild(burbuja);
+        hilo.appendChild(fila);
+    }
+
+    async function revisar() {
+        try {
+            const respuesta = await fetch(urlNuevos + '?desde=' + ultimoId, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+            });
+            if (!respuesta.ok) return;
+            const datos = await respuesta.json();
+            if (!datos.mensajes.length) return;
+
+            const vacio = document.getElementById('vacio');
+            if (vacio) vacio.remove();
+
+            const alFinal = hilo.scrollHeight - hilo.scrollTop - hilo.clientHeight < 60;
+            datos.mensajes.forEach(function (mensaje) {
+                agregar(mensaje);
+                ultimoId = Math.max(ultimoId, mensaje.id);
+            });
+            if (alFinal) hilo.scrollTop = hilo.scrollHeight;
+        } catch (error) {
+            /* Sin conexión momentánea: se reintenta en el siguiente ciclo. */
+        }
+    }
+
+    setInterval(revisar, 5000);
+})();
+</script>
+{% endblock %}

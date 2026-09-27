@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block titulo %}Armar horarios{% endblock %}
+{% block contenido %}
+<h2>Armar horarios</h2>
+<p class="text-muted">Arrastra una materia desde el panel de la izquierda hacia una celda del horario para colocarla. Esto se hace normalmente una vez por gestión.</p>
+
+<form method="get" class="row g-2 align-items-end mb-4">
+    <div class="col-auto">
+        <label class="form-label mb-0">Curso</label>
+        <select name="curso" class="form-select" onchange="this.form.submit()">
+            {% for c in cursos %}
+                <option value="{{ c.id }}" {% if curso and c.id == curso.id %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+
+{% if not curso %}
+    <div class="alert alert-warning">Primero crea un curso en el admin.</div>
+{% else %}
+<div class="row g-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-primary text-white">Materias de este curso</div>
+            <div class="card-body">
+                {% for a in materias_curso %}
+                    <div class="border rounded p-2 mb-2 bg-light materia-chip" draggable="true" data-asignacion-id="{{ a.id }}" style="cursor:grab;">
+                        <strong>{{ a.materia }}</strong><br>
+                        <span class="text-muted small">{{ a.profesor.get_full_name }}</span>
+                    </div>
+                {% empty %}
+                    <p class="text-muted small">Todavía no hay materias asignadas a este curso.</p>
+                {% endfor %}
+            </div>
+            <div class="card-footer">
+                <form method="post" action="{% url 'academico:agregar_materia_curso' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="curso_id" value="{{ curso.id }}">
+                    <label class="form-label small mb-1">Agregar profesor a este curso</label>
+                    <select name="profesor_id" class="form-select form-select-sm mb-2" required>
+                        <option value="">- Elegir profesor -</option>
+                        {% for p in profesores %}
+                            <option value="{{ p.id }}">{{ p.get_full_name|default:p.username }}</option>
+                        {% endfor %}
+                    </select>
+                    {% comment %}
+                      La materia se elige aparte: un profesor puede dictar varias y
+                      no siempre la misma en todos sus cursos.
+                    {% endcomment %}
+                    <select name="materia_id" class="form-select form-select-sm mb-2" required>
+                        <option value="">- Elegir materia -</option>
+                        {% for m in materias %}
+                            <option value="{{ m.id }}">{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-outline-primary w-100">Agregar</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header">Períodos del día</div>
+            <div class="card-body">
+                <form method="post" action="{% url 'academico:agregar_periodo' %}" class="mb-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="curso_id" value="{{ curso.id }}">
+                    <input type="text" name="etiqueta" class="form-control form-control-sm mb-1"
+                           placeholder='Nombre: "1°", "Recreo"… (opcional)'>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" name="es_recreo" class="form-check-input" id="es_recreo">
+                        <label class="form-check-label small" for="es_recreo">Es recreo</label>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Agregar período</button>
+                </form>
+
+                {% if not filas %}
+                <form method="post" action="{% url 'academico:copiar_periodos' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="curso_destino_id" value="{{ curso.id }}">
+                    <label class="form-label small mb-1">Copiar períodos de otro curso</label>
+                    <select name="curso_origen_id" class="form-select form-select-sm mb-2" required>
+                        <option value="">- Elegir curso -</option>
+                        {% for c in otros_cursos %}
+                            <option value="{{ c.id }}">{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Copiar</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-9">
+        <div class="card shadow-sm">
+            <div class="card-body p-2">
+                {% if not filas %}
+                    <p class="text-muted text-center my-4">Este curso todavía no tiene períodos definidos. Agrega uno desde el panel de la izquierda.</p>
+                {% else %}
+                <table class="table table-bordered mb-0 horario-grid">
+                    <thead>
+                        <tr>
+                            <th style="width:130px;">Período</th>
+                            {% for codigo, nombre in dias %}
+                                <th class="text-center bg-primary text-white">{{ nombre }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for fila in filas %}
+                        {% if fila.periodo.es_recreo %}
+                            <tr>
+                                <td class="fw-bold small">
+                                    {{ fila.periodo.nombre }}
+                                    <form method="post" action="{% url 'academico:eliminar_periodo' fila.periodo.id %}" class="d-inline" onsubmit="return confirm('¿Eliminar este período?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-link btn-sm text-danger p-0" title="Eliminar período">×</button>
+                                    </form>
+                                </td>
+                                <td colspan="{{ dias|length }}" class="text-center bg-secondary text-white fw-bold">
+                                    {{ fila.periodo.etiqueta|default:"RECREO" }}
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td class="fw-bold small">
+                                    {{ fila.periodo.nombre }}
+                                    <form method="post" action="{% url 'academico:eliminar_periodo' fila.periodo.id %}" class="d-inline" onsubmit="return confirm('¿Eliminar este período?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-link btn-sm text-danger p-0" title="Eliminar período">×</button>
+                                    </form>
+                                </td>
+                                {% for celda in fila.celdas %}
+                                    <td class="p-1 dropzone" data-periodo-id="{{ fila.periodo.id }}" data-dia="{{ celda.dia }}">
+                                        {% if celda.horario %}
+                                            <div class="rounded p-2 bg-success-subtle small">
+                                                <strong>{{ celda.horario.asignacion.materia }}</strong><br>
+                                                {{ celda.horario.asignacion.profesor.get_full_name }}
+                                                <form method="post" action="{% url 'academico:quitar_horario' celda.horario.id %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-link btn-sm text-danger p-0 float-end" title="Quitar">×</button>
+                                                </form>
+                                            </div>
+                                        {% else %}
+                                            <div class="rounded p-2 text-center text-muted small" style="min-height:52px; border:1px dashed #ccc;">&nbsp;</div>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<form id="form-colocar" method="post" action="{% url 'academico:colocar_horario' %}" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="asignacion_id" id="input-asignacion-id">
+    <input type="hidden" name="periodo_id" id="input-periodo-id">
+    <input type="hidden" name="dia" id="input-dia">
+</form>
+
+<style>
+.materia-chip:active { cursor: grabbing; }
+.dropzone.dragover > div { border-color: #0d6efd !important; background-color: #e7f1ff; }
+</style>
+
+<script>
+document.querySelectorAll('.materia-chip').forEach(function (chip) {
+    chip.addEventListener('dragstart', function (ev) {
+        ev.dataTransfer.setData('text/plain', chip.dataset.asignacionId);
+    });
+});
+
+document.querySelectorAll('.dropzone').forEach(function (zone) {
+    zone.addEventListener('dragover', function (ev) {
+        ev.preventDefault();
+        zone.classList.add('dragover');
+    });
+    zone.addEventListener('dragleave', function () {
+        zone.classList.remove('dragover');
+    });
+    zone.addEventListener('drop', function (ev) {
+        ev.preventDefault();
+        zone.classList.remove('dragover');
+        var asignacionId = ev.dataTransfer.getData('text/plain');
+        if (!asignacionId) { return; }
+        document.getElementById('input-asignacion-id').value = asignacionId;
+        document.getElementById('input-periodo-id').value = zone.dataset.periodoId;
+        document.getElementById('input-dia').value = zone.dataset.dia;
+        document.getElementById('form-colocar').submit();
+    });
+});
+</script>
+{% endblock %}

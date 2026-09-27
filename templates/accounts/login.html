@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block pie %}{% endblock %}
+{% block titulo %}Iniciar sesión{% endblock %}
+{% block estilos %}
+<style>
+  /* ── Portada partida a pantalla completa ──
+     Izquierda: la fotografía, sin nada encima salvo la placa del nombre.
+     Derecha: entrar. */
+  .sa-portada {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    min-height: 100vh;
+  }
+
+  .sa-panel {
+    /* La fotografía va sola, sin velo: lo que se resalta es el texto, no la foto.
+       El color de abajo solo se ve mientras el archivo no está puesto. */
+    background-color: #0e3733;
+    background-image: url('{% static "img/portada-bolivia.jpg" %}');
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 40px;
+  }
+
+  /* La placa: solo lo que hay debajo del texto se oscurece y se difumina. */
+  .sa-cartel {
+    max-width: 420px;
+    padding: 30px 34px 32px;
+    border-radius: var(--sa-radio);
+    background: rgba(10, 40, 37, .52);
+    border: 1px solid rgba(255, 255, 255, .22);
+    box-shadow: 0 20px 44px -24px rgba(0, 0, 0, .65);
+    /* La placa es medio transparente, así que la legibilidad no puede venir de
+       ella: cada letra lleva su propia sombra, que es lo único que oscurece la
+       fotografía y solo justo detrás del texto. */
+    text-shadow: 0 1px 2px rgba(3, 22, 20, .95), 0 2px 12px rgba(3, 22, 20, .8);
+  }
+  @supports (backdrop-filter: blur(1px)) {
+    .sa-cartel { background: rgba(10, 40, 37, .40); backdrop-filter: blur(16px) saturate(1.2); }
+  }
+
+  .sa-cartel-escudo { width: 112px; height: auto; }
+  .sa-cartel-nombre {
+    color: #fff; font-size: 1.4rem; font-weight: 800; line-height: 1.25; margin: 18px 0 0;
+  }
+  .sa-cartel-nivel {
+    color: #7fe0d4; font-size: .72rem; font-weight: 800; letter-spacing: .12em;
+    text-transform: uppercase; margin-top: 8px;
+  }
+  .sa-cartel-lema {
+    color: #d6ece9; font-size: .92rem; font-style: italic; line-height: 1.5;
+    margin: 16px 0 0; padding-left: 13px; border-left: 3px solid var(--sa-verde);
+  }
+
+  .sa-entrada {
+    background: var(--sa-blanco);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px 56px;
+  }
+  .sa-entrada-dentro { width: 100%; max-width: 400px; margin: 0 auto; }
+  .sa-entrada-titulo { font-size: 1.6rem; margin: 0 0 2px; }
+  .sa-entrada-pie { color: var(--sa-suave); font-size: .9rem; margin: 0 0 26px; }
+
+  /* Los cuatro roles. Solo cambian los rótulos de los campos: quien pulse el
+     botón equivocado entra igual, porque el formulario se envía al mismo sitio. */
+  .sa-roles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 22px; }
+  .sa-rol {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: .7rem .5rem; border: 1px solid var(--sa-borde); border-radius: var(--sa-radio-s);
+    background: var(--sa-blanco); color: var(--sa-suave);
+    font-size: .78rem; font-weight: 800; line-height: 1.2; text-align: center;
+    cursor: pointer; transition: border-color .15s ease, color .15s ease, background-color .15s ease;
+  }
+  .sa-rol:hover { background: #f2faf8; }
+  .sa-rol svg { stroke: currentColor; }
+  .sa-rol[aria-pressed="true"] {
+    border-color: var(--sa-verde); border-width: 2px; padding: calc(.7rem - 1px) calc(.5rem - 1px);
+    color: var(--sa-tinta); background: #eafaf7;
+  }
+  .sa-ayuda { font-size: .76rem; color: var(--sa-suave); margin: 5px 0 0; }
+
+  /* Visión y misión: en la columna blanca, para dejar la fotografía despejada. */
+  .sa-institucional { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--sa-borde); display: grid; gap: 14px; }
+  .sa-institucional h2 {
+    font-size: .68rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+    color: #1c7a70; margin: 0 0 4px;
+  }
+  .sa-institucional p { font-size: .78rem; line-height: 1.55; color: #4d726d; margin: 0; text-align: justify; }
+
+  @media (max-width: 991.98px) {
+    .sa-portada { grid-template-columns: 1fr; grid-template-rows: auto 1fr; min-height: 100vh; }
+    .sa-panel { padding: 36px 24px; min-height: 42vh; }
+    .sa-cartel { max-width: 100%; text-align: center; padding: 24px 26px 26px; }
+    .sa-cartel-escudo { width: 96px; }
+    .sa-cartel-nombre { font-size: 1.15rem; }
+    .sa-cartel-lema { border-left: 0; padding-left: 0; font-size: .86rem; }
+    .sa-entrada { padding: 34px 26px 44px; }
+  }
+</style>
+{% endblock %}
+
+{% block cuerpo %}
+<div class="sa-portada">
+
+  <div class="sa-panel">
+    <div class="sa-cartel">
+      <img class="sa-cartel-escudo" src="{% static 'img/escudo.png' %}"
+           alt="Escudo de la Unidad Educativa Eduardo Abaroa Tarde">
+      <h1 class="sa-cartel-nombre">Unidad Educativa<br>«Eduardo Abaroa Tarde»</h1>
+      <div class="sa-cartel-nivel">Nivel Secundario</div>
+      <p class="sa-cartel-lema">De las cumbres andinas al litoral boliviano</p>
+    </div>
+  </div>
+
+  <div class="sa-entrada">
+    <div class="sa-entrada-dentro">
+      {% include 'comun/_mensajes.html' %}
+
+      <h2 class="sa-entrada-titulo">Entrar</h2>
+      <p class="sa-entrada-pie">Sistema de Seguimiento Académico</p>
+
+      {% if form.errors %}
+        <div class="alert alert-danger py-2 mb-3">
+          Usuario o contraseña incorrectos. Revisa que estés escribiendo lo que pide el
+          botón que elegiste arriba.
+        </div>
+      {% endif %}
+
+      <div class="sa-roles" role="group" aria-label="¿Quién eres?">
+        <button type="button" class="sa-rol" data-rol="estudiante" aria-pressed="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M6 10.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5"/></svg>
+          Estudiante
+        </button>
+        <button type="button" class="sa-rol" data-rol="padre" aria-pressed="false">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3.5"/><path d="M22 20v-2a4 4 0 0 0-3-3.87"/></svg>
+          Padre de familia
+        </button>
+        <button type="button" class="sa-rol" data-rol="docente" aria-pressed="false">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V6a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 1.5z"/><path d="M8 8h7M8 12h5"/></svg>
+          Docente
+        </button>
+        <button type="button" class="sa-rol" data-rol="administracion" aria-pressed="false">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M10 21v-6h4v6"/></svg>
+          Administración
+        </button>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label" id="rotuloUsuario" for="{{ form.username.id_for_label }}">Tu RUDE</label>
+          {{ form.username }}
+          <p class="sa-ayuda" id="ayudaUsuario">Está en tu libreta, arriba a la derecha.</p>
+        </div>
+        <div class="mb-4">
+          <label class="form-label" id="rotuloClave" for="{{ form.password.id_for_label }}">Tu carnet de identidad</label>
+          {{ form.password }}
+          <p class="sa-ayuda" id="ayudaClave">Solo los números, sin el complemento.</p>
+        </div>
+        <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
+          Ingresar
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h13M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </form>
+
+      <p class="sa-ayuda text-center mt-3">
+        Qué datos guarda el colegio aquí y quién los ve:
+        <a href="{% url 'privacidad' %}">aviso de privacidad</a>.
+      </p>
+
+      <div class="sa-institucional">
+        <section>
+          <h2>Visión</h2>
+          <p>
+            El Colegio «Eduardo Abaroa Tarde» tiene la visión de constituirse en el mejor
+            Colegio de la Ciudad de El Alto, entregando a la Sociedad jóvenes destacados
+            —que se hayan forjado en sus aulas— en los aspectos Académico, Cultural y Deportivo.
+          </p>
+        </section>
+        <section>
+          <h2>Misión</h2>
+          <p>
+            El Colegio «Eduardo Abaroa Tarde» tiene la misión de ofrecer a la adolescencia y
+            juventud una Educación Integral, Inclusiva, Intercultural, Plurilingüe y de alta
+            calidad, para la formación de jóvenes y adolescentes notablemente morales e idóneos,
+            que se constituyan en líderes comprometidos con el desarrollo de su ciudad y País.
+          </p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% comment %}
+  Los botones solo cambian los rótulos: el formulario se envía siempre al mismo
+  sitio, así que quien pulse el botón equivocado entra igual.
+{% endcomment %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const ROLES = {
+    estudiante: {
+      usuario: 'Tu RUDE',
+      ayudaUsuario: 'Está en tu libreta, arriba a la derecha.',
+      clave: 'Tu carnet de identidad',
+      ayudaClave: 'Solo los números, sin el complemento.',
+    },
+    padre: {
+      usuario: 'Tu carnet de identidad',
+      ayudaUsuario: 'El tuyo, no el de tu hijo.',
+      clave: 'Tu carnet de identidad otra vez',
+      ayudaClave: 'El mismo número en los dos campos.',
+    },
+    docente: {
+      usuario: 'Tu nombre y apellido juntos',
+      ayudaUsuario: 'Sin espacios ni tildes. Ejemplo: veronicaalcon',
+      clave: 'Lo mismo que escribiste arriba',
+      ayudaClave: 'Hasta que el colegio registre tu carnet de identidad.',
+    },
+    administracion: {
+      usuario: 'Tu usuario',
+      ayudaUsuario: 'El que te dio la dirección del colegio.',
+      clave: 'Tu contraseña',
+      ayudaClave: '',
+    },
+  };
+
+  const botones = document.querySelectorAll('.sa-rol');
+  const rotuloUsuario = document.getElementById('rotuloUsuario');
+  const ayudaUsuario = document.getElementById('ayudaUsuario');
+  const rotuloClave = document.getElementById('rotuloClave');
+  const ayudaClave = document.getElementById('ayudaClave');
+  const campoUsuario = document.getElementById('{{ form.username.id_for_label }}');
+
+  function elegir(rol, moverElFoco) {
+    const textos = ROLES[rol];
+    if (!textos) return;
+    botones.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rol === rol)));
+    rotuloUsuario.textContent = textos.usuario;
+    ayudaUsuario.textContent = textos.ayudaUsuario;
+    rotuloClave.textContent = textos.clave;
+    ayudaClave.textContent = textos.ayudaClave;
+    ayudaClave.hidden = !textos.ayudaClave;
+    if (moverElFoco && campoUsuario) campoUsuario.focus();
+    try { localStorage.setItem('sa-rol', rol); } catch (error) { /* sin recordar */ }
+  }
+
+  botones.forEach(function (boton) {
+    boton.addEventListener('click', () => elegir(boton.dataset.rol, true));
+  });
+
+  // Se recuerda quién entró la última vez en este navegador. Es una comodidad:
+  // si no se puede guardar, la pantalla abre en Estudiante, como siempre.
+  let recordado = null;
+  try { recordado = localStorage.getItem('sa-rol'); } catch (error) { /* nada */ }
+  if (recordado && ROLES[recordado]) elegir(recordado, false);
+});
+</script>
+{% endblock %}

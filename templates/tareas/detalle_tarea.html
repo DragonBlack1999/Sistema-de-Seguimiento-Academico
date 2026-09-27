@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block titulo %}{{ tarea.titulo }}{% endblock %}
+{% block contenido %}
+<h2>{{ tarea.titulo }}</h2>
+<p class="text-muted">
+    {{ tarea.asignacion.materia }} · {{ tarea.get_trimestre_display }} ·
+    fecha límite {{ tarea.fecha_entrega }}
+    {% if tarea.vencida %}<span class="badge bg-danger">vencida</span>{% endif %}
+</p>
+
+<div class="row g-4">
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header">Enunciado</div>
+            <div class="card-body">
+                {% if tarea.descripcion %}
+                    <p style="white-space: pre-line;">{{ tarea.descripcion }}</p>
+                {% else %}
+                    <p class="text-muted">Sin descripción.</p>
+                {% endif %}
+                {% if tarea.archivo_adjunto %}
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'tareas:descargar_enunciado' tarea.id %}">
+                        Descargar enunciado
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if entrega and entrega.nota is not None %}
+        <div class="card shadow-sm mt-3 border-success">
+            <div class="card-header bg-success text-white">Calificación</div>
+            <div class="card-body">
+                <h3 class="mb-2">{{ entrega.nota }} / 40</h3>
+                {% if entrega.aprobada %}
+                    <span class="badge bg-success">Aprobado</span>
+                {% else %}
+                    <span class="badge bg-danger">Reprobado</span>
+                {% endif %}
+                {% if entrega.observacion %}
+                    <p class="mt-3 mb-0"><strong>Observación del profesor:</strong><br>{{ entrega.observacion }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header">Mi entrega</div>
+            <div class="card-body">
+                <p>
+                    Estado actual:
+                    {% if entrega and entrega.estado == 'ENTREGADA' %}
+                        <span class="badge bg-success">Entregada</span>
+                    {% elif entrega and entrega.estado == 'ATRASADA' %}
+                        <span class="badge bg-warning text-dark">Entregada con retraso</span>
+                    {% elif entrega and entrega.estado == 'NO_ENTREGADA' %}
+                        <span class="badge bg-danger">No entregada</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Pendiente</span>
+                    {% endif %}
+                </p>
+
+                {% if entrega.archivo %}
+                    <p><a href="{% url 'tareas:descargar_entrega' entrega.id %}">Descargar mi archivo</a></p>
+                {% endif %}
+
+                {% if entrega and entrega.nota is not None %}
+                    <div class="alert alert-info mb-0">
+                        Esta tarea ya fue calificada, por eso no puedes modificar tu entrega.
+                    </div>
+                {% elif tarea.vencida and not tarea.permite_atraso %}
+                    <div class="alert alert-warning mb-0">
+                        La fecha límite ya pasó y esta tarea no admite entregas atrasadas.
+                    </div>
+                {% else %}
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {% if tarea.permite_archivo %}
+                            {{ form.archivo|as_crispy_field }}
+                        {% else %}
+                            <p class="text-muted small">Esta tarea no admite archivos: solo márcala como completada.</p>
+                        {% endif %}
+                        {{ form.comentario_estudiante|as_crispy_field }}
+                        <button type="submit" class="btn btn-primary">
+                            {% if tarea.permite_archivo %}Entregar{% else %}Marcar como completada{% endif %}
+                        </button>
+                    </form>
+
+                    {% if entrega and entrega.estado != 'PENDIENTE' %}
+                    <form method="post" class="mt-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="deshacer">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Deshacer entrega</button>
+                    </form>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<a href="{% url 'tareas:mis_tareas' %}" class="btn btn-outline-secondary mt-4">Volver a mis tareas</a>
+{% endblock %}

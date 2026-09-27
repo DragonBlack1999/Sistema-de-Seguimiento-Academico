@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+{% load static estaticos %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2ec4b6">
+    <title>{% block titulo %}Sistema de Seguimiento Académico{% endblock %} · U.E. Eduardo Abaroa Tarde</title>
+    <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
+    {# Con esto Android ofrece instalar el sistema como una app #}
+    <link rel="manifest" href="{% url 'manifest' %}">
+    <link rel="apple-touch-icon" href="{% static 'img/app-192.png' %}">
+    {% if vapid_public_key %}<meta name="llave-avisos" content="{{ vapid_public_key }}">{% endif %}
+    <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static_v 'css/sistema.css' %}" rel="stylesheet">
+    {% block estilos %}{% endblock %}
+</head>
+<body>
+    {% if user.is_authenticated %}
+    <nav class="navbar navbar-expand-lg sa-nav sticky-top">
+        <div class="container-fluid">
+            {% comment %}
+              Solo el escudo y el nombre: con once enlaces, añadir "Nivel Secundario"
+              aquí partía la barra en dos líneas. Ese dato vive en la portada y en el
+              título de la pestaña.
+            {% endcomment %}
+            <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'accounts:redirigir_dashboard' %}">
+                <img src="{% static 'img/escudo-chico.png' %}" alt="" aria-hidden="true"
+                     style="height:32px; width:auto;">
+                <span>Eduardo Abaroa Tarde</span>
+            </a>
+
+            {# Campanita: fuera del colapso, para que siga visible en móvil junto a la hamburguesa #}
+            <div class="dropdown ms-auto me-2 order-lg-last">
+                <a class="nav-link sa-campana position-relative p-1" href="#" id="menuNotificaciones"
+                   role="button" data-bs-toggle="dropdown" aria-expanded="false"
+                   aria-label="Notificaciones{% if notificaciones_no_leidas %}: {{ notificaciones_no_leidas }} sin leer{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" fill="none" stroke="currentColor"
+                         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                         viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/>
+                        <path d="M13.7 21a2 2 0 0 1-3.4 0"/>
+                    </svg>
+                    {% if notificaciones_no_leidas %}
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        {{ notificaciones_no_leidas }}<span class="visually-hidden">notificaciones sin leer</span>
+                    </span>
+                    {% endif %}
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow"
+                    style="min-width:20rem;max-width:90vw;max-height:70vh;overflow-y:auto;"
+                    aria-labelledby="menuNotificaciones">
+                    <li><h6 class="dropdown-header">Notificaciones</h6></li>
+                    {% for n in notificaciones_recientes %}
+                    <li>
+                        <a class="dropdown-item text-wrap {% if not n.leida %}fw-bold{% endif %}"
+                           href="{% url 'notificaciones:abrir' n.pk %}">
+                            <div class="small text-uppercase text-muted">
+                                {% if n.nivel == 'URGENTE' %}<span class="text-danger">● Urgente · </span>
+                                {% elif n.nivel == 'ATENCION' %}<span class="text-warning-emphasis">● Atención · </span>{% endif %}
+                                {{ n.get_tipo_display }}
+                            </div>
+                            <div>{{ n.titulo }}</div>
+                            <div class="small text-muted">{{ n.fecha_creacion|date:"d/m/Y H:i" }}</div>
+                        </a>
+                    </li>
+                    {% empty %}
+                    <li><span class="dropdown-item-text text-muted">No tienes notificaciones.</span></li>
+                    {% endfor %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-center" href="{% url 'notificaciones:lista' %}">Ver todas</a></li>
+                    {% if notificaciones_no_leidas %}
+                    <li>
+                        <form method="post" action="{% url 'notificaciones:marcar_todas' %}" class="px-3 py-2">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Marcar todas como leídas</button>
+                        </form>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Abrir menú">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link {% block nav_inicio %}{% endblock %}" href="{% url 'accounts:redirigir_dashboard' %}">Inicio</a></li>
+                    {# El horario se resuelve desde request.user: el padre y el regente no tienen uno propio #}
+                    {% if not user.es_padre and not user.es_regente %}
+                        <li class="nav-item"><a class="nav-link {% block nav_horario %}{% endblock %}" href="{% url 'academico:mi_horario' %}">Horario</a></li>
+                    {% endif %}
+                    <li class="nav-item"><a class="nav-link {% block nav_noticias %}{% endblock %}" href="{% url 'noticias:lista' %}">Noticias</a></li>
+                    {# El regente no conversa con nadie: su bandeja siempre estaría vacía #}
+                    {% if not user.es_regente %}
+                    <li class="nav-item">
+                        <a class="nav-link {% block nav_mensajes %}{% endblock %}" href="{% url 'mensajeria:bandeja' %}">
+                            Mensajes{% if mensajes_no_leidos %}
+                            <span class="badge rounded-pill bg-danger">{{ mensajes_no_leidos }}</span>{% endif %}
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if user.es_estudiante %}
+                        <li class="nav-item"><a class="nav-link {% block nav_notas %}{% endblock %}" href="{% url 'calificaciones:mis_notas' %}">Mis notas</a></li>
+                        <li class="nav-item"><a class="nav-link {% block nav_tareas %}{% endblock %}" href="{% url 'tareas:mis_tareas' %}">Mis tareas</a></li>
+                        <li class="nav-item"><a class="nav-link {% block nav_asistencia %}{% endblock %}" href="{% url 'asistencia:mi_asistencia' %}">Mi asistencia</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'comunicaciones:lista_citaciones' %}">Mis citaciones</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'calificaciones:historial_academico' %}">Historial</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'academico:mi_perfil' %}">Mi perfil</a></li>
+                    {% endif %}
+                    {% if user.es_padre %}
+                        <li class="nav-item"><a class="nav-link {% block nav_hijos %}{% endblock %}" href="{% url 'padres:panel' %}">Mis hijos</a></li>
+                    {% endif %}
+                    {% if user.es_regente %}
+                        <li class="nav-item"><a class="nav-link {% block nav_puerta %}{% endblock %}" href="{% url 'asistencia:puerta' %}">Control de entrada</a></li>
+                    {% endif %}
+                    {% if user.es_profesor %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'comunicaciones:lista_citaciones' %}">Citaciones</a></li>
+                    {% endif %}
+                    {% if user.es_admin %}
+                        <li class="nav-item"><a class="nav-link {% block nav_tablero %}{% endblock %}" href="{% url 'accounts:tablero' %}">Tablero</a></li>
+                        <li class="nav-item"><a class="nav-link {% block nav_puerta_admin %}{% endblock %}" href="{% url 'asistencia:puerta' %}">Entrada</a></li>
+                        <li class="nav-item"><a class="nav-link {% block nav_capacitacion %}{% endblock %}" href="{% url 'asistencia:capacitacion' %}">Capacitación</a></li>
+                        {# El resto de acciones vive en un menú: once enlaces sueltos partían la barra en tres líneas #}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Más</a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'comunicaciones:lista_citaciones' %}">Citaciones</a></li>
+                                <li><a class="dropdown-item" href="{% url 'comunicaciones:buscar_boletines' %}">Boletines de notas</a></li>
+                                <li><a class="dropdown-item" href="{% url 'noticias:crear' %}">Publicar noticia</a></li>
+                                <li><a class="dropdown-item" href="{% url 'academico:horario_constructor' %}">Armar horarios</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="/admin/">Gestionar datos</a></li>
+                            </ul>
+                        </li>
+                    {% endif %}
+                </ul>
+                <span class="navbar-text me-3">{{ user.get_full_name|default:user.username }} · {{ user.get_rol_display }}</span>
+                <form method="post" action="{% url 'accounts:logout' %}" class="d-flex">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">Salir</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    {% comment %}
+      Casi todas las pantallas viven dentro del contenedor centrado. La portada
+      de inicio de sesión reemplaza este bloque entero para ocupar el ancho
+      completo, que es lo único que no se puede hacer desde dentro.
+    {% endcomment %}
+    {% block cuerpo %}
+    <div class="container mt-4 mb-5">
+        {% include 'comun/_mensajes.html' %}
+        {% block contenido %}{% endblock %}
+    </div>
+    {% endblock %}
+
+    {% comment %}
+      El pie está en todas las pantallas para que siempre se pueda llegar al
+      aviso de privacidad. La portada lo vacía: ahí el enlace ya va bajo el
+      botón, y el diseño ocupa el alto exacto de la pantalla.
+    {% endcomment %}
+    {% block pie %}
+    <footer class="sa-pie py-3">
+        <div class="container text-center small text-muted">
+            U.E. «Eduardo Abaroa Tarde» · Nivel Secundario ·
+            <a href="{% url 'privacidad' %}">Aviso de privacidad</a>
+        </div>
+    </footer>
+    {% endblock %}
+
+    <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+    {% if user.is_authenticated %}<script src="{% static_v 'js/avisos.js' %}"></script>{% endif %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

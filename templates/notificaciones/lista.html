@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block titulo %}Notificaciones{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center">
+    <h2>Notificaciones</h2>
+    {% if notificaciones_no_leidas %}
+    <form method="post" action="{% url 'notificaciones:marcar_todas' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-secondary">Marcar todas como leídas</button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm mt-3">
+    <div class="card-body">
+        <h5 class="card-title">Avisos en el celular</h5>
+        <p class="card-text text-muted mb-2" id="estadoAvisos">
+            Actívalos para enterarte de citaciones, tareas y noticias sin entrar a mirar.
+        </p>
+        <button type="button" id="botonAvisos" class="btn btn-primary" data-activo="no" disabled>
+            Activar los avisos en este dispositivo
+        </button>
+        <div class="form-text mt-2">
+            Qué se guarda al activarlos, en el
+            <a href="{% url 'privacidad' %}">aviso de privacidad</a>.
+        </div>
+        {% if dispositivos %}
+        <div class="form-text mt-2">
+            Ya los recibes en {{ dispositivos|length }} dispositivo{{ dispositivos|length|pluralize }}.
+            Cada teléfono o computadora se activa por separado.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="list-group shadow-sm mt-3">
+    {% for n in notificaciones %}
+    <a href="{% url 'notificaciones:abrir' n.pk %}"
+       class="list-group-item list-group-item-action {% if not n.leida %}list-group-item-light fw-semibold{% endif %}">
+        <div class="d-flex justify-content-between">
+            <span>
+                {% if n.nivel == 'URGENTE' %}
+                    <span class="badge bg-danger">Urgente</span>
+                {% elif n.nivel == 'ATENCION' %}
+                    <span class="badge bg-warning text-dark">Atención</span>
+                {% endif %}
+                <span class="badge bg-light text-secondary">{{ n.get_tipo_display }}</span>
+            </span>
+            <small class="text-muted">{{ n.fecha_creacion|date:"d/m/Y H:i" }}</small>
+        </div>
+        <div class="mt-1">{{ n.titulo }}</div>
+        {% if n.mensaje %}<div class="small text-muted">{{ n.mensaje }}</div>{% endif %}
+        {% if not n.leida %}<span class="badge bg-danger mt-1">Sin leer</span>{% endif %}
+    </a>
+    {% empty %}
+    <div class="list-group-item text-center text-muted">No tienes notificaciones.</div>
+    {% endfor %}
+</div>
+{% endblock %}

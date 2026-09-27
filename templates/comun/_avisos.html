@@ -1,0 +1,21 @@
+{# Avisos en frases normales. Espera `avisos` = [{tono, texto}] #}
+{% if avisos %}
+<div class="sa-resumen">
+  {% for aviso in avisos %}
+  <div class="sa-aviso">
+    <span class="sa-aviso-icono" style="background:{% if aviso.tono == 'urgente' %}var(--sa-error-fondo){% elif aviso.tono == 'atencion' %}#fdf0e0{% elif aviso.tono == 'bien' %}#e4f6ec{% else %}var(--sa-info-fondo){% endif %};">
+      {% if aviso.tono == 'urgente' %}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sa-error-tinta)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+      {% elif aviso.tono == 'atencion' %}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c47f1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      {% elif aviso.tono == 'bien' %}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2f7d5f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      {% else %}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sa-info-tinta)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+      {% endif %}
+    </span>
+    <span class="sa-aviso-texto">{{ aviso.texto }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

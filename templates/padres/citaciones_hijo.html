@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block titulo %}Citaciones de {{ hijo.usuario.get_full_name }}{% endblock %}
+{% block contenido %}
+<h2>Citaciones de {{ hijo.usuario.get_full_name }}</h2>
+
+<table class="table table-striped bg-white shadow-sm mt-3">
+    <thead><tr><th>Fecha</th><th>Motivo</th><th>Lugar</th><th class="text-center">Estado</th></tr></thead>
+    <tbody>
+    {% for c in citaciones %}
+        <tr>
+            <td>{{ c.fecha }}{% if c.hora %} {{ c.hora|time:"H:i" }}{% endif %}</td>
+            <td>
+                {{ c.motivo }}
+                {% if c.es_automatica %}<span class="badge bg-info text-dark">Automática</span>{% endif %}
+            </td>
+            <td>{{ c.lugar }}</td>
+            <td class="text-center">
+                {% if c.estado == 'PENDIENTE' %}<span class="badge bg-warning text-dark">
+                {% elif c.estado == 'ATENDIDA' %}<span class="badge bg-success">
+                {% else %}<span class="badge bg-secondary">{% endif %}
+                {{ c.get_estado_display }}</span>
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="4" class="text-center text-muted">No hay citaciones registradas.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<a href="{% url 'padres:panel' %}" class="btn btn-outline-secondary">Volver a mis hijos</a>
+{% endblock %}

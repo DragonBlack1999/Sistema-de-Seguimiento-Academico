@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags estaticos %}
+{% block titulo %}Nueva citación{% endblock %}
+{% block contenido %}
+<h2 class="sa-saludo">Nueva citación</h2>
+
+<div class="card shadow-sm mt-3" style="max-width: 600px;">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="mb-3 buscador buscador-estudiante">
+                <label class="form-label" for="buscadorEstudiante">Estudiante</label>
+                <input type="text" id="buscadorEstudiante" class="form-control"
+                       autocomplete="off" role="combobox" aria-expanded="false"
+                       aria-autocomplete="list" aria-controls="sugerenciasEstudiante"
+                       placeholder="Escribe el nombre, el apellido o el RUDE"
+                       value="{% if elegido %}{{ elegido.usuario.get_full_name }}{% endif %}">
+                <div id="sugerenciasEstudiante" class="buscador-sugerencias" role="listbox" hidden></div>
+                {{ form.estudiante }}
+                <div id="estudianteElegido" class="form-text{% if not elegido %} d-none{% endif %}">
+                    {% if elegido %}Elegido: <strong>{{ elegido.usuario.get_full_name }}</strong> · {{ elegido.rude }}{% endif %}
+                </div>
+                {% for error in form.estudiante.errors %}
+                  <div class="text-danger small mt-1">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            {{ form.motivo|as_crispy_field }}
+            {{ form.fecha|as_crispy_field }}
+            {{ form.hora|as_crispy_field }}
+            {{ form.lugar|as_crispy_field }}
+
+            <button type="submit" class="btn btn-primary mt-2">Generar citación</button>
+        </form>
+    </div>
+</div>
+
+<script src="{% static_v 'js/sugerencias.js' %}"></script>
+<script>
+(function () {
+  const campo = document.getElementById('buscadorEstudiante');
+  const oculto = document.getElementById('{{ form.estudiante.auto_id }}');
+  const lista = document.getElementById('sugerenciasEstudiante');
+  const elegido = document.getElementById('estudianteElegido');
+  const URL_SUGERENCIAS = "{% url 'comunicaciones:sugerencias_estudiantes' %}";
+
+  let temporizador = null;
+  let peticion = 0;
+  let activa = -1;
+
+  function cerrar() {
+    Sugerencias.cerrar(lista);
+    campo.setAttribute('aria-expanded', 'false');
+    activa = -1;
+  }
+
+  function opciones() {
+    return lista.querySelectorAll('button');
+  }
+
+  function resaltar(indice) {
+    const botones = opciones();
+    if (!botones.length) return;
+    activa = (indice + botones.length) % botones.length;
+    botones.forEach((b, i) => b.classList.toggle('activa', i === activa));
+    botones[activa].scrollIntoView({block: 'nearest'});
+  }
+
+  function elegir(datos) {
+    campo.value = datos.nombre;
+    oculto.value = datos.id;
+    elegido.textContent = '';
+    elegido.append('Elegido: ');
+    const fuerte = document.createElement('strong');
+    fuerte.textContent = datos.nombre;                 // textContent: el nombre nunca se interpreta como HTML
+    elegido.append(fuerte, ' · ' + datos.rude + ' · ' + datos.curso);
+    elegido.classList.remove('d-none');
+    cerrar();
+  }
+
+  function pintar(resultados) {
+    lista.replaceChildren();
+    if (!resultados.length) {
+      lista.append(Sugerencias.vacio('Ningún estudiante coincide con lo que escribiste.'));
+    } else {
+      resultados.forEach(function (datos) {
+        const boton = Sugerencias.opcion(datos.nombre, datos.rude + ' · ' + datos.curso);
+        boton.addEventListener('click', () => elegir(datos));
+        lista.append(boton);
+      });
+    }
+    Sugerencias.abrir(lista);
+    campo.setAttribute('aria-expanded', 'true');
+    activa = -1;
+  }
+
+  async function buscar(texto) {
+    const mia = ++peticion;
+    try {
+      const respuesta = await fetch(`${URL_SUGERENCIAS}?q=${encodeURIComponent(texto)}`);
+      if (!respuesta.ok) { cerrar(); return; }
+      const datos = await respuesta.json();
+      // Una respuesta lenta no debe pisar a otra más nueva.
+      if (mia === peticion) pintar(datos.resultados);
+    } catch (error) {
+      cerrar();
+    }
+  }
+
+  campo.addEventListener('input', function () {
+    // Al reescribir, la elección anterior deja de valer: si no se elige a nadie
+    // de la lista, el formulario avisa en vez de guardar al estudiante viejo.
+    oculto.value = '';
+    elegido.classList.add('d-none');
+
+    const texto = campo.value.trim();
+    clearTimeout(temporizador);
+    if (texto.length < 2) { ++peticion; cerrar(); return; }
+    temporizador = setTimeout(() => buscar(texto), 200);
+  });
+
+  campo.addEventListener('keydown', function (evento) {
+    if (evento.key === 'Escape') { cerrar(); return; }
+    const botones = opciones();
+    if (!Sugerencias.abierta(lista) || !botones.length) return;
+
+    if (evento.key === 'ArrowDown') { evento.preventDefault(); resaltar(activa + 1); }
+    else if (evento.key === 'ArrowUp') { evento.preventDefault(); resaltar(activa - 1); }
+    else if (evento.key === 'Enter' && activa >= 0) { evento.preventDefault(); botones[activa].click(); }
+  });
+
+  document.addEventListener('click', function (evento) {
+    if (!evento.target.closest('.buscador-estudiante')) cerrar();
+  });
+})();
+</script>
+{% endblock %}

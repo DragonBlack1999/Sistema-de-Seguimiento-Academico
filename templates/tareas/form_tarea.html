@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block titulo %}{% if es_edicion %}Editar tarea{% else %}Nueva tarea{% endif %}{% endblock %}
+{% block contenido %}
+<h2>{% if es_edicion %}Editar tarea{% else %}Nueva tarea{% endif %}</h2>
+<p class="text-muted">{{ asignacion.materia }} · {{ asignacion.curso }}</p>
+
+<div class="card shadow-sm mt-3" style="max-width: 700px;">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">
+                    {% if es_edicion %}Guardar cambios{% else %}Crear tarea{% endif %}
+                </button>
+                <a href="{% url 'tareas:lista_tareas' asignacion.id %}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

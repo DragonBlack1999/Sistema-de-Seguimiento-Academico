@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block titulo %}Mis hijos{% endblock %}
+{% block nav_hijos %}activo{% endblock %}
+{% block contenido %}
+
+<h2 class="sa-saludo">Hola, {{ user.first_name|default:user.get_full_name }}</h2>
+<p class="sa-subsaludo">
+  {% if tarjetas %}
+    {% for t in tarjetas %}{{ t.hijo.usuario.first_name }}{% if not forloop.last %} y {% endif %}{% endfor %}
+  {% else %}Sin hijos vinculados{% endif %}
+</p>
+
+<div class="sa-titulillo">Necesita su atención</div>
+{% include 'comun/_avisos.html' %}
+
+<div class="sa-titulillo">Mis hijos</div>
+<div class="row g-3">
+{% for t in tarjetas %}
+  <div class="col-12 col-md-6">
+    <div class="card h-100" style="border-top:5px solid {% cycle 'var(--sa-verde)' 'var(--sa-naranja)' 'var(--sa-azul)' 'var(--sa-rosa)' as color %};">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3">
+          <div class="sa-inicial" style="background:#e6f6f3; color:#1c7a70;">
+            {{ t.hijo.usuario.first_name|slice:":1" }}{{ t.hijo.usuario.last_name|slice:":1" }}
+          </div>
+          <div>
+            <div style="font-size:1.05rem; font-weight:800;">{{ t.hijo.usuario.get_full_name }}</div>
+            <div class="small text-muted">{{ t.hijo.curso_actual|default:"Sin curso asignado" }}</div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-4 mt-3">
+          <div>
+            <div style="font-size:1.35rem; font-weight:800;">{{ t.promedio|default:"—" }}</div>
+            <div class="small text-muted">promedio</div>
+          </div>
+          <div>
+            <div style="font-size:1.35rem; font-weight:800; {% if t.faltas %}color:var(--sa-error-tinta);{% endif %}">{{ t.faltas }}</div>
+            <div class="small text-muted">falta{{ t.faltas|pluralize }}</div>
+          </div>
+          <div>
+            <div style="font-size:1.35rem; font-weight:800; {% if t.citaciones_pendientes %}color:var(--sa-aviso-tinta);{% endif %}">{{ t.citaciones_pendientes }}</div>
+            <div class="small text-muted">citación{{ t.citaciones_pendientes|pluralize:"es" }}</div>
+          </div>
+          <div>
+            <div style="font-size:1.35rem; font-weight:800;">{{ t.tareas_pendientes }}</div>
+            <div class="small text-muted">tarea{{ t.tareas_pendientes|pluralize }}</div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'padres:notas_hijo' t.hijo.pk %}">Notas</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'padres:asistencia_hijo' t.hijo.pk %}">Asistencia</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'padres:tareas_hijo' t.hijo.pk %}">Tareas</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'padres:citaciones_hijo' t.hijo.pk %}">Citaciones</a>
+          <a class="btn btn-sm btn-primary" href="{% url 'comunicaciones:boletin_estudiante' t.hijo.pk %}">Boletín</a>
+        </div>
+      </div>
+    </div>
+  </div>
+{% empty %}
+  <div class="col-12">
+    <div class="alert alert-warning mb-0">
+      Tu cuenta no tiene hijos vinculados todavía. Contacta a la administración del colegio.
+    </div>
+  </div>
+{% endfor %}
+</div>
+
+{% endblock %}

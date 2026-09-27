@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+{% comment %}
+  Aviso de privacidad. Se lee sin haber entrado al sistema, a propósito: un
+  padre tiene que poder saber qué se guarda de su hijo antes de tener cuenta.
+
+  Todo lo que dice esta página describe lo que el sistema hace hoy. Si se
+  cambia una pantalla y con ella lo que se guarda o quién lo ve, se cambia
+  también aquí; una política que no coincide con el programa no protege a
+  nadie.
+{% endcomment %}
+{% block titulo %}Aviso de privacidad{% endblock %}
+{% block contenido %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+
+    <h2>Aviso de privacidad</h2>
+    <p class="text-muted">
+      Unidad Educativa «Eduardo Abaroa Tarde» · Nivel Secundario · El Alto, Bolivia<br>
+      Sistema de Seguimiento Académico · Versión 1 · Última actualización: 26 de septiembre de 2026
+    </p>
+
+    <div class="card shadow-sm my-4">
+      <div class="card-body">
+        <h5 class="card-title">En pocas palabras</h5>
+        <ul class="mb-0">
+          <li>Guardamos lo que el colegio ya anotaba en papel: asistencia, notas, tareas y citaciones.</li>
+          <li>Cada quien ve solo lo que le toca: usted, a sus hijos; el docente, a sus materias.</li>
+          <li>No vendemos ni publicamos estos datos. No hay publicidad ni rastreo de ningún tipo.</li>
+          <li>Los avisos al celular son voluntarios y se apagan cuando usted quiera.</li>
+          <li>Si un dato está mal, se corrige. Pídalo en secretaría.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h4 class="mt-5">1. Quién responde por estos datos</h4>
+    <p>
+      La Unidad Educativa «Eduardo Abaroa Tarde», a través de su Dirección. El sistema funciona
+      dentro del colegio y nadie más lo administra.
+    </p>
+    <ul>
+      <li><strong>Director:</strong> Fausto Enrique Vargas Herrera.</li>
+      <li><strong>Secretaría:</strong> Juan Carlos Pérez Guzmán, a quien se dirigen los pedidos de
+          corrección, copia o borrado de datos.</li>
+    </ul>
+    <p>
+      Los reclamos se hacen en secretaría, en horario de clases, y se responden por escrito.
+    </p>
+
+    <h4 class="mt-5">2. Qué se guarda y para qué</h4>
+    <p>
+      El colegio está obligado a llevar registro de la asistencia y de las calificaciones de cada
+      estudiante, y a informar de ambas a su familia. Eso es lo que hace este sistema: lo mismo que
+      el cuaderno y la planilla, pero al día y sin copiar a mano.
+    </p>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle sa-tabla-lectura">
+        <thead>
+          <tr><th>Qué</th><th>Para qué</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Identificación del estudiante</strong><br>
+                <span class="text-muted small">Nombre, RUDE, fecha de nacimiento, género,
+                nacionalidad, departamento, dirección, celular, grupo sanguíneo y fotografía.</span></td>
+            <td>Inscribirlo en su curso, emitir boletines y poder ubicar a su familia ante una
+                urgencia. El RUDE es el número que le da el Ministerio de Educación.</td>
+          </tr>
+          <tr>
+            <td><strong>Identificación del padre, madre o tutor</strong><br>
+                <span class="text-muted small">Nombre, carnet de identidad, celular y correo
+                electrónico, cuando lo da.</span></td>
+            <td>Crear su cuenta —el carnet es su usuario—, avisarle y citarlo.</td>
+          </tr>
+          <tr>
+            <td><strong>Asistencia</strong><br>
+                <span class="text-muted small">Fecha, hora de llegada, estado y observación;
+                quién la registró.</span></td>
+            <td>Llevar el control de entrada y saber cuándo hay que hablar con la familia.</td>
+          </tr>
+          <tr>
+            <td><strong>Calificaciones</strong><br>
+                <span class="text-muted small">Cada actividad con su puntaje, las cuatro
+                dimensiones, el puntaje extracurricular y la nota del trimestre; quién la puso.</span></td>
+            <td>Calificar según el reglamento, mostrar de qué se compone cada nota y emitir el boletín.</td>
+          </tr>
+          <tr>
+            <td><strong>Tareas y sus archivos</strong><br>
+                <span class="text-muted small">Enunciado, fecha de entrega, lo que el estudiante
+                sube y su comentario.</span></td>
+            <td>Dar y recibir el trabajo de la materia, y calificarlo.</td>
+          </tr>
+          <tr>
+            <td><strong>Comunicación</strong><br>
+                <span class="text-muted small">Citaciones, notificaciones y mensajes entre dos
+                personas del colegio, con sus archivos.</span></td>
+            <td>Avisar lo que pasa y dejar constancia de que se avisó.</td>
+          </tr>
+          <tr>
+            <td><strong>Acceso al sistema</strong><br>
+                <span class="text-muted small">Usuario, contraseña cifrada y fecha del último
+                ingreso.</span></td>
+            <td>Que cada persona entre a lo suyo y nadie más.</td>
+          </tr>
+          <tr>
+            <td><strong>Avisos al celular</strong><br>
+                <span class="text-muted small">La dirección técnica que el navegador entrega, sus
+                dos llaves y el nombre del dispositivo.</span></td>
+            <td>Poder mandar el aviso a ese teléfono. Solo si usted los activa.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="text-muted">
+      No se guarda nada más. En particular, el sistema no pide ni almacena datos de salud —salvo el
+      grupo sanguíneo, que está en la ficha por urgencias—, ni datos económicos, ni religión, ni
+      militancia.
+    </p>
+
+    <h4 class="mt-5">3. Quién ve qué</h4>
+    <p>
+      Esta es la parte que hace que el seguimiento sea seguimiento y no exposición. El sistema no
+      muestra «todo a todos»: cada pantalla comprueba quién está entrando.
+    </p>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle sa-tabla-lectura">
+        <thead>
+          <tr><th>Quién</th><th>Qué alcanza a ver</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>El estudiante</strong></td>
+              <td>Solo lo suyo: su asistencia, sus notas, sus tareas y sus citaciones.</td></tr>
+          <tr><td><strong>El padre, madre o tutor</strong></td>
+              <td>Solo lo de los hijos que tiene declarados. No ve a los demás estudiantes del curso,
+                  ni sus notas, ni sus faltas.</td></tr>
+          <tr><td><strong>El docente</strong></td>
+              <td>Solo los cursos y materias que tiene asignados. No entra a las planillas de otro
+                  docente.</td></tr>
+          <tr><td><strong>El regente</strong></td>
+              <td>La asistencia en la puerta, de todo el colegio. No califica ni ve notas.</td></tr>
+          <tr><td><strong>La dirección y la secretaría</strong></td>
+              <td>Todo lo académico del colegio, porque son quienes responden por el registro
+                  oficial.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Los <strong>mensajes</strong> son la excepción a la regla anterior: una conversación la leen
+      únicamente las dos personas que la tienen. Ni la dirección ni nadie más abre conversaciones
+      ajenas desde el sistema.
+    </p>
+    <p>
+      Los <strong>archivos</strong> —la tarea que sube un estudiante, la foto del perfil, el adjunto
+      de un mensaje— no tienen dirección pública en internet: se descargan desde una pantalla que
+      antes comprueba el permiso.
+    </p>
+
+    <h4 class="mt-5">4. Los avisos al celular</h4>
+    <p>
+      Son voluntarios. Mientras no los active, el sistema no manda nada a su teléfono; los avisos
+      siguen estando en la campanita cuando usted entra.
+    </p>
+    <ul>
+      <li>Se activan por dispositivo, desde el botón de la pantalla de notificaciones, y se apagan
+          desde el mismo botón o desde los ajustes del navegador.</li>
+      <li>Al activarlos, el navegador entrega al colegio una dirección técnica de ese aparato. Con
+          ella solo se puede mandar avisos; no da acceso a nada más del teléfono.</li>
+      <li>El aviso viaja por el servicio de mensajería del fabricante del navegador (Google, Mozilla
+          o Microsoft, según cuál use). Ese intermediario transporta el texto del aviso, así que los
+          avisos dicen lo justo —«No entregó una tarea», «No asistió a clases»— y el detalle se ve
+          al entrar al sistema.</li>
+      <li>Lo que no es urgente se junta en <strong>un resumen al día por hijo</strong>, para no
+          interrumpirle quince veces.</li>
+      <li>Si un teléfono deja de responder, su registro se borra solo.</li>
+    </ul>
+
+    <h4 class="mt-5">5. Correo electrónico</h4>
+    <p>
+      Cuando el tutor deja su correo, las citaciones también se le envían ahí. El correo sale desde
+      la cuenta del colegio, por el servicio de Google. Si no quiere recibirlos, pida en secretaría
+      que se retire su dirección.
+    </p>
+
+    <h4 class="mt-5">6. Cuánto tiempo se guarda</h4>
+    <ul>
+      <li><strong>Asistencia, calificaciones y boletines:</strong> mientras el estudiante esté en el
+          colegio y después, como archivo, por el tiempo que exige la normativa educativa. Es el
+          registro oficial: de él salen los certificados que le pidan más adelante.</li>
+      <li><strong>Tareas y sus archivos:</strong> hasta el cierre de la gestión escolar.</li>
+      <li><strong>Mensajes y notificaciones:</strong> la gestión en curso.</li>
+      <li><strong>Registro de avisos al celular:</strong> hasta que usted los apague, cambie de
+          teléfono o el navegador deje de aceptarlos.</li>
+    </ul>
+
+    <h4 class="mt-5">7. Lo que este sistema no hace</h4>
+    <ul>
+      <li>No vende, alquila ni cede estos datos a nadie. No hay publicidad.</li>
+      <li>No usa medidores de audiencia ni rastreadores de terceros. La única cookie que pone es la
+          de su sesión, la que hace que no tenga que escribir la contraseña en cada pantalla.</li>
+      <li>No usa la ubicación, la cámara ni el micrófono del teléfono.</li>
+      <li>No decide nada solo. Las alertas avisan; aprobar, reprobar o citar lo decide una persona.</li>
+      <li>No publica notas ni fotografías fuera del sistema.</li>
+    </ul>
+
+    <h4 class="mt-5">8. Se trata de datos de menores de edad</h4>
+    <p>
+      Casi todo lo que hay aquí es información de adolescentes, y por eso se maneja con más cuidado,
+      no con menos: el acceso está limitado por rol, las cuentas las crea el colegio y no hay forma
+      de que una persona ajena se registre sola. La familia puede pedir en cualquier momento ver
+      todo lo que el sistema guarda de su hijo o hija.
+    </p>
+
+    <h4 class="mt-5">9. Sus derechos</h4>
+    <p>En secretaría puede pedir, sin dar explicaciones:</p>
+    <ul>
+      <li><strong>Ver</strong> todo lo que el sistema guarda de su hijo o hija, y una copia impresa.</li>
+      <li><strong>Corregir</strong> lo que esté mal escrito —un nombre, una fecha, un teléfono— o una
+          falta que se haya registrado por error.</li>
+      <li><strong>Actualizar</strong> su celular, su correo o su dirección.</li>
+      <li><strong>Apagar</strong> los avisos al celular o los correos.</li>
+      <li><strong>Reclamar</strong> ante la Dirección si considera que alguien vio o usó estos datos
+          para algo que no era el seguimiento escolar.</li>
+    </ul>
+    <p>
+      La nota que puso un docente no se «corrige» por este camino: eso se reclama al docente y a la
+      Dirección por la vía académica de siempre. Lo que sí se corrige aquí es un error de registro.
+    </p>
+    <p class="text-muted">
+      Este aviso se apoya en el derecho a la privacidad y a la propia imagen reconocido por la
+      Constitución Política del Estado (artículo 21) y en la acción de protección de privacidad
+      (artículo 130), en la Ley 164 en lo referido a los datos en medios electrónicos, en el Código
+      Niña, Niño y Adolescente (Ley 548) y en la normativa educativa vigente. Se actualizará si
+      cambian estas reglas.
+    </p>
+
+    <h4 class="mt-5">10. Cómo se protegen</h4>
+    <ul>
+      <li>Las contraseñas no se guardan tal cual: se guarda una huella cifrada de ellas, que no
+          permite recuperarlas. Nadie del colegio puede leer su contraseña.</li>
+      <li>Cada pantalla comprueba el rol antes de mostrar nada, y los archivos se sirven solo a quien
+          tiene permiso.</li>
+      <li>Cuando el sistema esté publicado en internet, viajará cifrado (HTTPS).</li>
+      <li>Cada noche se hace una copia de respaldo completa, que se guarda en un disco
+          aparte y bajo llave de la Dirección. Se conservan las de los últimos catorce días y
+          una de cada mes del último año, y se comprueba periódicamente que se puedan
+          restaurar. Esas copias contienen los mismos datos que esta página describe y se
+          cuidan igual.</li>
+    </ul>
+
+    <h4 class="mt-5">11. Deberes de quien usa el sistema</h4>
+    <p>Esto vale para docentes, regencia, secretaría y dirección:</p>
+    <ul>
+      <li>La cuenta es personal. No se presta ni se comparte la contraseña.</li>
+      <li>Se entra a los datos de un estudiante por una razón de trabajo, no por curiosidad.</li>
+      <li>No se copian listas, notas ni fotografías para usarlas fuera del colegio, ni se publican en
+          redes sociales o grupos de WhatsApp.</li>
+      <li>En una computadora compartida —la de la puerta, la de secretaría— se cierra la sesión al
+          terminar.</li>
+      <li>Quien detecte que alguien está viendo lo que no le corresponde, avisa a la Dirección.</li>
+    </ul>
+
+    <h4 class="mt-5">12. Cambios en este aviso</h4>
+    <p>
+      Si cambia lo que se guarda o quién lo ve, se cambia también este texto y se actualiza la fecha
+      del encabezado. Los cambios importantes se avisan por el mismo sistema.
+    </p>
+
+    <hr class="my-4">
+    <p class="text-muted">
+      ¿Dudas sobre esta página? Pregunte en secretaría. Está para ser entendida, no para llenar un
+      requisito.
+    </p>
+
+  </div>
+</div>
+{% endblock %}

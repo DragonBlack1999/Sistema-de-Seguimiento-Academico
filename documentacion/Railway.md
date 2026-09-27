@@ -62,10 +62,17 @@ Railway detecta Python solo. Lo que hace después lo manda `railway.json`, que y
 está en el proyecto:
 
 - **al construir:** instala `requirements-nube.txt` (agrega `pywebpush`, que es
-  lo que empuja los avisos al celular) y prepara los archivos estáticos;
-- **al arrancar:** aplica las migraciones y levanta el servidor;
+  lo que empuja los avisos al celular);
+- **al arrancar:** prepara los archivos estáticos, aplica las migraciones y
+  levanta el servidor. Va aquí y no en la construcción porque necesita las
+  variables, que recién existen al arrancar;
 - **para vigilar:** pregunta por `/salud/`, que responde «bien» solo si la
   aplicación alcanza su base de datos.
+
+> **El primer despliegue va a fallar, y está bien.** Railway construye apenas
+> se conecta el repositorio, cuando todavía no hay ninguna variable puesta. El
+> error dirá que falta `SECRET_KEY`. Se agregan las variables del paso
+> siguiente y se vuelve a desplegar (**Deployments → Redeploy**).
 
 ## 2. Las variables
 

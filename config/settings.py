@@ -7,7 +7,17 @@ from decouple import config, Csv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config('SECRET_KEY')
+# La clave con la que se firman las sesiones. No tiene valor por omisión a
+# propósito: un sistema publicado con una clave conocida es un sistema abierto.
+SECRET_KEY = config('SECRET_KEY', default='')
+if not SECRET_KEY:
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured(
+        'Falta SECRET_KEY. En el servidor se agrega en Variables; en el colegio, en el '
+        'archivo .env. Para generar una nueva:\n'
+        '    python -c "from django.core.management.utils import get_random_secret_key as g; print(g())"'
+    )
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 

@@ -304,6 +304,44 @@ a:hover { color: #14574f; }
   .table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
   .table > tbody > tr > td, .table > thead th { white-space: nowrap; }
 
+  /* Las tablas de datos que mira una familia se apilan: cada fila, una
+     tarjeta con sus valores rotulados. Deslizar una tabla de 900 px en un
+     telefono para leer la nota de una materia no es leer, es buscar.
+     La planilla del docente NO lleva esta clase: ahi las columnas son el
+     sentido de la pantalla y se navega como una hoja de calculo. */
+  .sa-tabla-apilada,
+  .sa-tabla-apilada > tbody,
+  .sa-tabla-apilada > tbody > tr,
+  .sa-tabla-apilada > tbody > tr > td {
+    display: block; width: 100%; white-space: normal;
+  }
+  .sa-tabla-apilada > thead { display: none; }
+  .sa-tabla-apilada > tbody > tr {
+    border: 1px solid var(--sa-borde) !important; border-radius: 14px;
+    background: var(--sa-blanco); padding: .55rem .8rem; margin-bottom: .6rem;
+  }
+  .sa-tabla-apilada > tbody > tr > td {
+    border: 0 !important; border-radius: 0 !important;
+    padding: .22rem 0; text-align: left !important;
+    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  }
+  /* El rotulo lo pone el encabezado de su columna, que aqui esta escondido */
+  .sa-tabla-apilada > tbody > tr > td::before {
+    content: attr(data-rotulo);
+    flex: 0 0 auto; color: var(--sa-suave);
+    font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .02em;
+  }
+  /* La primera celda hace de titulo de la tarjeta */
+  .sa-tabla-apilada > tbody > tr > td[data-principal] {
+    display: block; font-weight: 800; font-size: .98rem;
+    padding-bottom: .4rem; margin-bottom: .4rem;
+    border-bottom: 1px solid var(--sa-borde) !important;
+  }
+  .sa-tabla-apilada > tbody > tr > td[data-principal]::before { content: none; }
+  /* Las filas que ocupan todo el ancho (un desglose, o "no hay nada todavia") */
+  .sa-tabla-apilada > tbody > tr > td[colspan] { display: block; }
+  .sa-tabla-apilada > tbody > tr > td[colspan]::before { content: none; }
+
   /* Las tablas que son texto para leer (el aviso de privacidad) no se
      deslizan: se apilan. Con 375px de ancho, dos columnas de prosa obligan a
      arrastrar la tabla de lado para terminar cada frase. */

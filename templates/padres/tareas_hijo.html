@@ -4,7 +4,7 @@
 <h2>Tareas de {{ hijo.usuario.get_full_name }}</h2>
 {% if matricula %}<p class="text-muted">{{ matricula.curso }}</p>{% endif %}
 
-<table class="table table-striped bg-white shadow-sm mt-3">
+<table class="table table-striped bg-white shadow-sm mt-3 sa-tabla-apilada">
     <thead>
         <tr>
             <th>Trimestre</th><th>Materia</th><th>Tarea</th><th>Fecha límite</th>
@@ -14,11 +14,11 @@
     <tbody>
     {% for fila in filas %}
         <tr>
-            <td>{{ fila.tarea.get_trimestre_display }}</td>
-            <td>{{ fila.tarea.asignacion.materia }}</td>
-            <td>{{ fila.tarea.titulo }}</td>
-            <td>{{ fila.tarea.fecha_entrega }}</td>
-            <td class="text-center">
+            <td data-rotulo="Trimestre">{{ fila.tarea.get_trimestre_display }}</td>
+            <td data-rotulo="Materia">{{ fila.tarea.asignacion.materia }}</td>
+            <td data-principal>{{ fila.tarea.titulo }}</td>
+            <td data-rotulo="Entrega">{{ fila.tarea.fecha_entrega }}</td>
+            <td class="text-center" data-rotulo="Estado">
                 {% if fila.entrega and fila.entrega.estado == 'ENTREGADA' %}
                     <span class="badge bg-success">Entregada</span>
                 {% elif fila.entrega and fila.entrega.estado == 'ATRASADA' %}
@@ -31,9 +31,10 @@
                     <span class="badge bg-secondary">Pendiente</span>
                 {% endif %}
             </td>
-            <td class="text-center">
+            <td class="text-center" data-rotulo="Nota">
                 {% if fila.entrega and fila.entrega.nota is not None %}
-                    <strong>{{ fila.entrega.nota }}</strong> / 100
+                    {# Sobre 40: cada tarea es una columna de «hacer», no una nota sobre cien #}
+                    <strong>{{ fila.entrega.nota }}</strong> / 40
                 {% else %}
                     <span class="text-muted">—</span>
                 {% endif %}

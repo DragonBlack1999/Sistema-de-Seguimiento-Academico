@@ -10,7 +10,7 @@
 <div class="card shadow-sm mt-3">
     <div class="card-header"><strong>{{ grupo.etiqueta }}</strong></div>
     <div class="card-body p-0">
-        <table class="table table-striped mb-0">
+        <table class="table table-striped mb-0 sa-tabla-apilada">
             <thead>
                 <tr>
                     <th>Materia</th>
@@ -24,10 +24,10 @@
             <tbody>
             {% for fila in grupo.filas %}
                 <tr>
-                    <td>{{ fila.tarea.asignacion.materia }}</td>
-                    <td>{{ fila.tarea.titulo }}</td>
-                    <td>{{ fila.tarea.fecha_entrega }}</td>
-                    <td class="text-center">
+                    <td data-rotulo="Materia">{{ fila.tarea.asignacion.materia }}</td>
+                    <td data-principal>{{ fila.tarea.titulo }}</td>
+                    <td data-rotulo="Entrega">{{ fila.tarea.fecha_entrega }}</td>
+                    <td class="text-center" data-rotulo="Estado">
                         {% if fila.entrega and fila.entrega.estado == 'ENTREGADA' %}
                             <span class="badge bg-success">Entregada</span>
                         {% elif fila.entrega and fila.entrega.estado == 'ATRASADA' %}

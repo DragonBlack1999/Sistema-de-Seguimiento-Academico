@@ -11,7 +11,7 @@
     </a>
 </div>
 
-<table class="table table-striped bg-white shadow-sm mt-3">
+<table class="table table-striped bg-white shadow-sm mt-3 sa-tabla-apilada">
     <thead>
         <tr>
             <th>Materia</th>
@@ -25,7 +25,7 @@
     <tbody>
     {% for fila in filas %}
         <tr>
-            <td>
+            <td data-principal>
                 {{ fila.materia }}
                 <button class="btn btn-link btn-sm p-0 d-block" type="button"
                         data-bs-toggle="collapse" data-bs-target="#desglose{{ forloop.counter }}"
@@ -33,10 +33,10 @@
                     ver cómo se calcula
                 </button>
             </td>
-            <td class="text-center">{{ fila.t1|default_if_none:"—" }}</td>
-            <td class="text-center">{{ fila.t2|default_if_none:"—" }}</td>
-            <td class="text-center">{{ fila.t3|default_if_none:"—" }}</td>
-            <td class="text-center">
+            <td class="text-center" data-rotulo="Trim. 1">{{ fila.t1|floatformat:0|default:"—" }}</td>
+            <td class="text-center" data-rotulo="Trim. 2">{{ fila.t2|floatformat:0|default:"—" }}</td>
+            <td class="text-center" data-rotulo="Trim. 3">{{ fila.t3|floatformat:0|default:"—" }}</td>
+            <td class="text-center" data-rotulo="Estado">
                 {% if fila.promedio == '-' %}
                     <span class="badge bg-secondary">Sin notas</span>
                 {% elif fila.aprobado %}
@@ -45,11 +45,11 @@
                     <span class="badge bg-danger">Reprobado</span>
                 {% endif %}
             </td>
-            <td class="text-center fw-bold">{{ fila.promedio|default_if_none:"—" }}</td>
+            <td class="text-center fw-bold" data-rotulo="Promedio">{{ fila.promedio|floatformat:0|default:"—" }}</td>
         </tr>
         <tr class="collapse" id="desglose{{ forloop.counter }}">
             <td colspan="6" class="bg-light">
-                <table class="table table-sm mb-0">
+                <table class="table table-sm mb-0 sa-tabla-apilada">
                     <thead>
                         <tr class="small text-muted">
                             <th>Trimestre</th>
@@ -64,14 +64,14 @@
                     <tbody>
                         {% for nota in fila.detalle %}
                         <tr>
-                            <td>Trimestre {{ forloop.counter }}</td>
+                            <td data-principal>Trimestre {{ forloop.counter }}</td>
                             {% if nota %}
-                                <td class="text-center">{{ nota.ser|default_if_none:"—" }}</td>
-                                <td class="text-center">{{ nota.saber|default_if_none:"—" }}</td>
-                                <td class="text-center">{{ nota.hacer|default_if_none:"—" }}</td>
-                                <td class="text-center">{{ nota.autoevaluacion|default_if_none:"—" }}</td>
-                                <td class="text-center">{{ nota.extracurricular|default_if_none:"—" }}</td>
-                                <td class="text-center fw-bold">{{ nota.nota }}</td>
+                                <td class="text-center" data-rotulo="Ser (10)">{{ nota.ser|floatformat:"-1"|default:"—" }}</td>
+                                <td class="text-center" data-rotulo="Saber (45)">{{ nota.saber|floatformat:"-1"|default:"—" }}</td>
+                                <td class="text-center" data-rotulo="Hacer (40)">{{ nota.hacer|floatformat:"-1"|default:"—" }}</td>
+                                <td class="text-center" data-rotulo="Autoevaluación (5)">{{ nota.autoevaluacion|floatformat:"-1"|default:"—" }}</td>
+                                <td class="text-center" data-rotulo="Extra (hasta 5)">{{ nota.extracurricular|floatformat:"-1"|default:"—" }}</td>
+                                <td class="text-center fw-bold" data-rotulo="Nota">{{ nota.nota|floatformat:"-1" }}</td>
                             {% else %}
                                 <td colspan="6" class="text-center text-muted">Todavía sin notas</td>
                             {% endif %}

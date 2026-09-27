@@ -45,8 +45,11 @@
                         <path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/>
                         <path d="M13.7 21a2 2 0 0 1-3.4 0"/>
                     </svg>
-                    {# Siempre en el HTML, escondida cuando está en cero: así el guion
-                       que la pone al día solo tiene que cambiar el número. #}
+                    {% comment %}
+                      Siempre en el HTML, escondida cuando está en cero: así el guion
+                      que la pone al día solo tiene que cambiar el número.
+                      (En dos líneas hace falta {% comment %}: {# #} solo vale en una.)
+                    {% endcomment %}
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
                           id="contadorAvisos" {% if not notificaciones_no_leidas %}hidden{% endif %}>
                         {{ notificaciones_no_leidas|default:0 }}<span class="visually-hidden">notificaciones sin leer</span>

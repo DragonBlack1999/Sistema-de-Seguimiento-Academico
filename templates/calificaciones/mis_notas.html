@@ -29,7 +29,7 @@
 </div>
 {% endif %}
 
-<table class="table mt-3">
+<table class="table mt-3 sa-tabla-apilada">
   <thead>
     <tr>
       <th>Materia</th>
@@ -43,7 +43,7 @@
   <tbody>
   {% for fila in filas %}
     <tr>
-      <td>
+      <td data-principal>
         {{ fila.materia }}
         <button class="btn btn-link btn-sm p-0 d-block" type="button"
                 data-bs-toggle="collapse" data-bs-target="#desglose{{ forloop.counter }}"
@@ -51,11 +51,11 @@
           ver cómo se calcula
         </button>
       </td>
-      <td class="text-center">{{ fila.t1|default_if_none:"—" }}</td>
-      <td class="text-center">{{ fila.t2|default_if_none:"—" }}</td>
-      <td class="text-center">{{ fila.t3|default_if_none:"—" }}</td>
-      <td class="text-center" style="font-weight:800;">{{ fila.promedio|default_if_none:"—" }}</td>
-      <td class="text-end">
+      <td class="text-center" data-rotulo="Trim. 1">{{ fila.t1|floatformat:"-1"|default:"—" }}</td>
+      <td class="text-center" data-rotulo="Trim. 2">{{ fila.t2|floatformat:"-1"|default:"—" }}</td>
+      <td class="text-center" data-rotulo="Trim. 3">{{ fila.t3|floatformat:"-1"|default:"—" }}</td>
+      <td class="text-center" style="font-weight:800;" data-rotulo="Promedio">{{ fila.promedio|floatformat:"-1"|default:"—" }}</td>
+      <td class="text-end" data-rotulo="Estado">
         {% if fila.promedio == '-' %}<span class="badge bg-secondary">Sin notas</span>
         {% elif fila.aprobado %}<span class="badge bg-success">Aprobado</span>
         {% else %}<span class="badge bg-danger">Reprobado</span>{% endif %}

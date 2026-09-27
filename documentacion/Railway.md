@@ -122,8 +122,11 @@ no los necesita.
 
 Para comprobar que llegó todo, comparar con el `informe.txt` de ese respaldo:
 
+> El `-d` no es opcional: sin él, psql toma la dirección como nombre de base y
+> **ignora el `-c`** con un aviso que no dice por qué.
+
 ```
-"C:\Program Files\PostgreSQL\16\bin\psql.exe" "%URL%" -c "select count(*) from academico_estudiante"
+"C:\Program Files\PostgreSQL\16\bin\psql.exe" -d "%URL%" -c "select count(*) from academico_estudiante"
 ```
 
 ## 5. Comprobar que funciona

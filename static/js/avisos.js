@@ -172,6 +172,55 @@
      que no lo merece. Lo urgente ya viaja por otro camino, el aviso al celular,
      que llega aunque el sistema este cerrado. */
   const CADA = 45000;
+  const RECUERDO = 'sonidoAvisos';        // por dispositivo, como los avisos al celular
+
+  function sonidoEncendido() {
+    try {
+      return localStorage.getItem(RECUERDO) !== 'no';   // de fabrica, encendido
+    } catch (error) {
+      return true;                        // sin almacenamiento (ventana privada): igual suena
+    }
+  }
+
+  function guardarSonido(encendido) {
+    try {
+      localStorage.setItem(RECUERDO, encendido ? 'si' : 'no');
+    } catch (error) {
+      /* Si el navegador no deja guardar, vale para esta visita y ya. */
+    }
+  }
+
+  /* Dos notas cortas, generadas aqui mismo: ningun archivo que descargar.
+     La segunda sube una cuarta sobre la primera, que suena a aviso y no a
+     alarma. Volumen bajo a proposito: esto convive con una clase. */
+  let piano = null;
+
+  window.sonarAviso = function sonarAviso() {
+    try {
+      const Piano = window.AudioContext || window.webkitAudioContext;
+      if (!Piano) return false;
+      piano = piano || new Piano();
+      if (piano.state === 'suspended') piano.resume();
+
+      const ahora = piano.currentTime;
+      [[880, 0], [1174.66, 0.13]].forEach(function ([frecuencia, retraso]) {
+        const nota = piano.createOscillator();
+        const volumen = piano.createGain();
+        nota.type = 'sine';
+        nota.frequency.value = frecuencia;
+        // Entra y se apaga en curva: un tono que corta de golpe suena a error.
+        volumen.gain.setValueAtTime(0.0001, ahora + retraso);
+        volumen.gain.exponentialRampToValueAtTime(0.16, ahora + retraso + 0.02);
+        volumen.gain.exponentialRampToValueAtTime(0.0001, ahora + retraso + 0.22);
+        nota.connect(volumen).connect(piano.destination);
+        nota.start(ahora + retraso);
+        nota.stop(ahora + retraso + 0.24);
+      });
+      return true;
+    } catch (error) {
+      return false;                       // navegador que no deja sonar: se calla
+    }
+  };
 
   function pintarContador(elemento, cuantos) {
     if (!elemento) return;
@@ -181,6 +230,18 @@
     }
   }
 
+  /* Lo que habia la ultima vez que miramos. Arranca con lo que trajo la
+     pagina, para que la primera consulta no suene por avisos que ya estaban. */
+  function loQueMuestra(id) {
+    const elemento = document.getElementById(id);
+    return elemento ? parseInt(elemento.textContent, 10) || 0 : 0;
+  }
+
+  let ultimos = {
+    notificaciones: loQueMuestra('contadorAvisos'),
+    mensajes: loQueMuestra('contadorMensajes'),
+  };
+
   async function ponerAlDia() {
     if (document.hidden) return;
     try {
@@ -189,11 +250,53 @@
       });
       if (!respuesta.ok) return;            // sesion vencida u otra cosa: no insistir
       const datos = await respuesta.json();
+      const llego = datos.notificaciones > ultimos.notificaciones ||
+                    datos.mensajes > ultimos.mensajes;
+      ultimos = {notificaciones: datos.notificaciones, mensajes: datos.mensajes};
+      if (llego && sonidoEncendido()) window.sonarAviso();
       pintarContador(document.getElementById('contadorAvisos'), datos.notificaciones);
       pintarContador(document.getElementById('contadorMensajes'), datos.mensajes);
     } catch (error) {
       /* Sin conexion no pasa nada: se vuelve a intentar en la siguiente vuelta. */
     }
+  }
+
+  const botonSonido = document.getElementById('botonSonido');
+  const probarSonido = document.getElementById('probarSonido');
+
+  function pintarSonido() {
+    if (!botonSonido) return;
+    const encendido = sonidoEncendido();
+    botonSonido.textContent = encendido ? 'Desactivar el sonido' : 'Activar el sonido';
+    botonSonido.classList.toggle('btn-outline-secondary', encendido);
+    botonSonido.classList.toggle('btn-primary', !encendido);
+    const estado = document.getElementById('estadoSonido');
+    if (estado) {
+      estado.textContent = encendido
+        ? 'Suena un tono corto cuando llega algo nuevo y tienes el sistema abierto.'
+        : 'No sonará nada. Los avisos siguen llegando a la campanita y al celular.';
+    }
+  }
+
+  if (botonSonido) {
+    botonSonido.addEventListener('click', function () {
+      const encender = !sonidoEncendido();
+      guardarSonido(encender);
+      pintarSonido();
+      if (encender) window.sonarAviso();   // que se escuche lo que acaba de activar
+    });
+    pintarSonido();
+  }
+
+  if (probarSonido) {
+    probarSonido.addEventListener('click', function (evento) {
+      evento.preventDefault();
+      if (!window.sonarAviso()) {
+        const estado = document.getElementById('estadoSonido');
+        if (estado) estado.textContent = 'Este navegador no deja sonar nada por ahora. ' +
+          'Suele bastar con tocar cualquier parte de la página y volver a intentarlo.';
+      }
+    });
   }
 
   if (document.getElementById('contadorAvisos')) {

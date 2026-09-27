@@ -30,6 +30,21 @@
             Qué se guarda al activarlos, en el
             <a href="{% url 'privacidad' %}">aviso de privacidad</a>.
         </div>
+
+        {% comment %}
+          El sonido es otra cosa que el aviso al celular: suena aquí, con el
+          sistema abierto. Sirve en la computadora de la puerta o en la de
+          secretaría; en un teléfono, poco. Por eso se apaga por dispositivo.
+        {% endcomment %}
+        <hr class="my-3">
+        <h6 class="mb-1">Sonido al llegar un aviso</h6>
+        <p class="card-text text-muted mb-2" id="estadoSonido">
+            Suena un tono corto cuando llega algo nuevo y tienes el sistema abierto.
+        </p>
+        <button type="button" id="botonSonido" class="btn btn-outline-secondary">
+            Desactivar el sonido
+        </button>
+        <a href="#" id="probarSonido" class="ms-2">escucharlo</a>
         {% if dispositivos %}
         <div class="form-text mt-2">
             Ya los recibes en {{ dispositivos|length }} dispositivo{{ dispositivos|length|pluralize }}.

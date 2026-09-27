@@ -22,22 +22,40 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 # ¿Está en internet o en una computadora del colegio?
-# Railway define RAILWAY_PUBLIC_DOMAIN por su cuenta; esa es la señal. De ella
-# cuelga todo lo que allá hace falta y aquí estorbaría (redirigir a HTTPS, por
-# ejemplo, dejaría la laptop inutilizable).
+# De esto cuelga todo lo que allá hace falta y aquí estorbaría: redirigir a
+# HTTPS, por ejemplo, dejaría la laptop inutilizable.
+#
+# La señal NO es el dominio. Railway fija las variables al arrancar el
+# contenedor: si el dominio se genera después de ese arranque, adentro no
+# existe RAILWAY_PUBLIC_DOMAIN y el sistema se creería en el colegio, sin
+# HTTPS y rechazando su propio dominio. Se mira, entonces, una variable que
+# Railway define siempre.
 DOMINIO_PUBLICO = config('RAILWAY_PUBLIC_DOMAIN', default='')
-EN_LA_NUBE = bool(DOMINIO_PUBLICO) or config('EN_LA_NUBE', default=False, cast=bool)
+EN_RAILWAY = any(config(nombre, default='') for nombre in (
+    'RAILWAY_ENVIRONMENT_NAME', 'RAILWAY_ENVIRONMENT',
+    'RAILWAY_PROJECT_ID', 'RAILWAY_SERVICE_ID',
+))
+EN_LA_NUBE = (EN_RAILWAY or bool(DOMINIO_PUBLICO)
+              or config('EN_LA_NUBE', default=False, cast=bool))
 
-if DOMINIO_PUBLICO:
+if EN_LA_NUBE:
     ALLOWED_HOSTS += [DOMINIO_PUBLICO, config('RAILWAY_PRIVATE_DOMAIN', default='')]
     # El vigilante de Railway golpea la aplicación con este nombre de host.
     ALLOWED_HOSTS.append('healthcheck.railway.app')
+    if EN_RAILWAY:
+        # Red de seguridad: cubre el dominio que asigna Railway aunque su
+        # variable no haya llegado a este contenedor. Con un dominio propio del
+        # colegio, esta línea deja de hacer falta.
+        ALLOWED_HOSTS.append('.up.railway.app')
     ALLOWED_HOSTS = [h for h in ALLOWED_HOSTS if h]
 
 # Desde qué direcciones se aceptan formularios. Sin esto, con HTTPS detrás de un
-# intermediario, Django rechaza todos los envíos por CSRF.
+# intermediario, Django rechaza todos los envíos por CSRF: nadie podría ni
+# iniciar sesión.
 CSRF_TRUSTED_ORIGINS = [f'https://{d}' for d in [DOMINIO_PUBLICO] if d]
 CSRF_TRUSTED_ORIGINS += config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
+if EN_RAILWAY and not CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS = ['https://*.up.railway.app']
 
 
 INSTALLED_APPS = [

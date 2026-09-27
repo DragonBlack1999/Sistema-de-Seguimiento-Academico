@@ -159,9 +159,10 @@ def para_padre(hijos):
             )})
 
     if not avisos:
-        avisos.append({'tono': 'bien', 'texto': format_html(
-            'Todo en orden: sin citaciones pendientes ni tareas atrasadas.',
-        )})
+        # Texto pelado, sin nada que insertar: format_html no pinta nada aqui
+        # (y Django 6.1 lo rechaza si se lo llama sin argumentos).
+        avisos.append({'tono': 'bien',
+                       'texto': 'Todo en orden: sin citaciones pendientes ni tareas atrasadas.'})
     return avisos
 
 

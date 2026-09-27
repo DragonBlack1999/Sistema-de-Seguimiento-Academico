@@ -45,11 +45,12 @@
                         <path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/>
                         <path d="M13.7 21a2 2 0 0 1-3.4 0"/>
                     </svg>
-                    {% if notificaciones_no_leidas %}
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                        {{ notificaciones_no_leidas }}<span class="visually-hidden">notificaciones sin leer</span>
+                    {# Siempre en el HTML, escondida cuando está en cero: así el guion
+                       que la pone al día solo tiene que cambiar el número. #}
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                          id="contadorAvisos" {% if not notificaciones_no_leidas %}hidden{% endif %}>
+                        {{ notificaciones_no_leidas|default:0 }}<span class="visually-hidden">notificaciones sin leer</span>
                     </span>
-                    {% endif %}
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end shadow"
                     style="min-width:20rem;max-width:90vw;max-height:70vh;overflow-y:auto;"
@@ -100,8 +101,9 @@
                     {% if not user.es_regente %}
                     <li class="nav-item">
                         <a class="nav-link {% block nav_mensajes %}{% endblock %}" href="{% url 'mensajeria:bandeja' %}">
-                            Mensajes{% if mensajes_no_leidos %}
-                            <span class="badge rounded-pill bg-danger">{{ mensajes_no_leidos }}</span>{% endif %}
+                            Mensajes
+                            <span class="badge rounded-pill bg-danger" id="contadorMensajes"
+                                  {% if not mensajes_no_leidos %}hidden{% endif %}>{{ mensajes_no_leidos|default:0 }}</span>
                         </a>
                     </li>
                     {% endif %}

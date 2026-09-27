@@ -162,6 +162,48 @@
     });
   }
 
+  /* ────────────────── los contadores de la barra ──────────────────
+     Una pagina no se entera de nada por su cuenta: el numero de la campanita
+     es el que se calculo al abrir la pantalla. Esto lo vuelve a preguntar cada
+     tanto, para no tener que recargar.
+
+     Cada 45 segundos y solo con la pestana a la vista: en un colegio de
+     cuatrocientas personas, preguntar cada segundo seria mucha carga para algo
+     que no lo merece. Lo urgente ya viaja por otro camino, el aviso al celular,
+     que llega aunque el sistema este cerrado. */
+  const CADA = 45000;
+
+  function pintarContador(elemento, cuantos) {
+    if (!elemento) return;
+    elemento.hidden = !cuantos;
+    if (cuantos) {
+      elemento.childNodes[0].nodeValue = String(cuantos);
+    }
+  }
+
+  async function ponerAlDia() {
+    if (document.hidden) return;
+    try {
+      const respuesta = await fetch('/notificaciones/contador/', {
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+      });
+      if (!respuesta.ok) return;            // sesion vencida u otra cosa: no insistir
+      const datos = await respuesta.json();
+      pintarContador(document.getElementById('contadorAvisos'), datos.notificaciones);
+      pintarContador(document.getElementById('contadorMensajes'), datos.mensajes);
+    } catch (error) {
+      /* Sin conexion no pasa nada: se vuelve a intentar en la siguiente vuelta. */
+    }
+  }
+
+  if (document.getElementById('contadorAvisos')) {
+    setInterval(ponerAlDia, CADA);
+    // Al volver a la pestana, mirar enseguida en vez de esperar el turno.
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) ponerAlDia();
+    });
+  }
+
   window.addEventListener('load', async function () {
     const registro = await registrar();
     await pintar(registro);

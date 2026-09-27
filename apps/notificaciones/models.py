@@ -41,6 +41,7 @@ class Notificacion(models.Model):
         TAREA = 'TAREA', 'Tarea'
         ASISTENCIA = 'ASISTENCIA', 'Asistencia'
         NOTA = 'NOTA', 'Calificación'
+        MENSAJE = 'MENSAJE', 'Mensaje'
 
     class Nivel(models.TextChoices):
         """Cuánto corre cada aviso.

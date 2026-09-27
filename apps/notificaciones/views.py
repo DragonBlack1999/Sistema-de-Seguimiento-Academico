@@ -21,6 +21,24 @@ def _destino_seguro(request, destino, por_defecto):
 
 
 @login_required
+def contador(request):
+    """Cuántos avisos y mensajes sin leer tiene quien pregunta.
+
+    Existe para que la barra de arriba se ponga al día sin recargar la página.
+    Son dos COUNT sobre índices: tiene que ser barato, porque lo llama cada
+    pestaña abierta del colegio.
+    """
+    from apps.mensajeria.models import Mensaje
+
+    return JsonResponse({
+        'notificaciones': Notificacion.objects.filter(
+            usuario_id=request.user.pk, leida=False).count(),
+        'mensajes': Mensaje.objects.filter(
+            destinatario_id=request.user.pk, leido=False).count(),
+    })
+
+
+@login_required
 def abrir(request, pk):
     notificacion = Notificacion.objects.filter(pk=pk, usuario=request.user).first()
     if notificacion is None:

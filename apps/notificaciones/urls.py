@@ -10,4 +10,5 @@ urlpatterns = [
     path('avisos/desactivar/', views.desactivar_avisos, name='desactivar_avisos'),
     path('<int:pk>/abrir/', views.abrir, name='abrir'),
     path('marcar-todas/', views.marcar_todas, name='marcar_todas'),
+    path('contador/', views.contador, name='contador'),
 ]

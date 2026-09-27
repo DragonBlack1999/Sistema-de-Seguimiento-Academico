@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from apps.accounts.models import Usuario
 
+from . import avisos
 from .forms import MensajeForm
 from .models import Conversacion, Mensaje
 from .services import buscar_contactos, puede_conversar, usuarios_contactables
@@ -106,12 +107,16 @@ def conversacion(request, usuario_id):
             mensaje.save()
             hilo.fecha_ultimo_mensaje = mensaje.fecha_envio
             hilo.save(update_fields=['fecha_ultimo_mensaje'])
+            # Que al otro le llegue, aunque no esté mirando la pantalla.
+            avisos.avisar_mensaje(mensaje)
             return redirect('mensajeria:conversacion', usuario_id=otro.pk)
     else:
         form = MensajeForm()
 
-    # Abrir la conversación marca como leído lo que mandó el otro.
+    # Abrir la conversación marca como leído lo que mandó el otro, y baja el
+    # aviso de la campanita: un contador que no baja se deja de mirar.
     hilo.mensajes.filter(destinatario=request.user, leido=False).update(leido=True)
+    avisos.marcar_leidos(request.user, otro)
 
     mensajes = hilo.mensajes.select_related('autor')
     ultimo_id = mensajes.last().pk if mensajes else 0

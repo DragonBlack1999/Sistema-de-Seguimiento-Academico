@@ -20,6 +20,12 @@
         <button type="button" id="botonAvisos" class="btn btn-primary" data-activo="no" disabled>
             Activar los avisos en este dispositivo
         </button>
+        {# Aparece solo donde el navegador ofrece instalar (Android/escritorio) #}
+        <button type="button" id="botonInstalar" class="btn btn-outline-secondary ms-2" hidden>
+            Instalar la app
+        </button>
+        {# Y aquí van las instrucciones de cada teléfono, que pone avisos.js #}
+        <div class="alert alert-info mt-3 mb-0" id="ayudaInstalar" hidden></div>
         <div class="form-text mt-2">
             Qué se guarda al activarlos, en el
             <a href="{% url 'privacidad' %}">aviso de privacidad</a>.

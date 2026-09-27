@@ -10,6 +10,10 @@
     {# Con esto Android ofrece instalar el sistema como una app #}
     <link rel="manifest" href="{% url 'manifest' %}">
     <link rel="apple-touch-icon" href="{% static 'img/app-192.png' %}">
+    {# En iPhone, estas tres son las que hacen que se abra como app y no como pestaña #}
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Eduardo Abaroa">
     {% if vapid_public_key %}<meta name="llave-avisos" content="{{ vapid_public_key }}">{% endif %}
     <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static_v 'css/sistema.css' %}" rel="stylesheet">

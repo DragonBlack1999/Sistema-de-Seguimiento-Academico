@@ -11,6 +11,24 @@
   const soportado = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   const boton = document.getElementById('botonAvisos');
   const estado = document.getElementById('estadoAvisos');
+  const botonInstalar = document.getElementById('botonInstalar');
+  const ayuda = document.getElementById('ayudaInstalar');
+
+  /* iPhone y iPad. El iPad moderno se hace pasar por Mac, y se lo reconoce
+     porque ningún Mac tiene pantalla táctil. */
+  const esApple = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  /* ¿Se abrió desde la pantalla de inicio o dentro del navegador? En iPhone
+     esto lo cambia todo: los avisos solo existen si está instalada. */
+  const instalada = window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  function explicar(html) {
+    if (!ayuda) return;
+    ayuda.innerHTML = html;
+    ayuda.hidden = false;
+  }
 
   function contar(texto) {
     if (estado) estado.textContent = texto;
@@ -52,7 +70,24 @@
     if (!boton) return;
     if (!soportado) {
       boton.disabled = true;
-      contar('Este navegador no puede mostrar avisos. Prueba con Chrome en Android.');
+      if (esApple && !instalada) {
+        // No es que el iPhone no pueda: es que todavía no está instalada.
+        contar('En iPhone y iPad, los avisos funcionan con la app en la pantalla de inicio.');
+        explicar(
+          '<strong>Para recibir los avisos en tu iPhone:</strong>' +
+          '<ol class="mb-0 mt-2">' +
+          '<li>Abre esta página en <strong>Safari</strong>.</li>' +
+          '<li>Toca el botón de compartir <strong>(el cuadrito con la flecha hacia arriba)</strong>.</li>' +
+          '<li>Elige <strong>«Añadir a pantalla de inicio»</strong>.</li>' +
+          '<li>Abre el sistema desde ese ícono y vuelve a esta pantalla.</li>' +
+          '</ol>' +
+          '<div class="small mt-2">Necesita iPhone con iOS 16.4 o más nuevo (de 2023 en adelante).</div>'
+        );
+      } else if (esApple) {
+        contar('Este iPhone no puede mostrar avisos: necesita iOS 16.4 o más nuevo.');
+      } else {
+        contar('Este navegador no puede mostrar avisos. En Android funciona con Chrome.');
+      }
       return;
     }
     if (Notification.permission === 'denied') {
@@ -102,9 +137,41 @@
     await suscripcion.unsubscribe();
   }
 
+  /* Chrome avisa cuando la app se puede instalar; hay que guardar ese aviso
+     para poder ofrecerlo con un botón nuestro, en el momento en que la persona
+     está justamente pensando en los avisos. */
+  let invitacion = null;
+  window.addEventListener('beforeinstallprompt', function (evento) {
+    evento.preventDefault();
+    invitacion = evento;
+    if (botonInstalar) botonInstalar.hidden = false;
+  });
+
+  window.addEventListener('appinstalled', function () {
+    invitacion = null;
+    if (botonInstalar) botonInstalar.hidden = true;
+  });
+
+  if (botonInstalar) {
+    botonInstalar.addEventListener('click', async function () {
+      if (!invitacion) return;
+      invitacion.prompt();
+      await invitacion.userChoice;
+      invitacion = null;
+      botonInstalar.hidden = true;
+    });
+  }
+
   window.addEventListener('load', async function () {
     const registro = await registrar();
     await pintar(registro);
+
+    // En iPhone ya instalada, conviene recordar que el permiso se pide una vez.
+    if (esApple && instalada && soportado && Notification.permission === 'default') {
+      explicar('Ya tienes la app en tu pantalla de inicio. Toca <strong>«Activar los avisos ' +
+               'en este dispositivo»</strong> y acepta el permiso que pide el teléfono.');
+    }
+
     if (!boton || !registro) return;
 
     boton.addEventListener('click', async function () {

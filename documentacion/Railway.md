@@ -126,8 +126,28 @@ Para comprobar que llegó todo, comparar con el `informe.txt` de ese respaldo:
 3. Abrirlo **en un teléfono**, activar los avisos y provocar uno (marcar una
    falta desde la puerta, por ejemplo). Es lo único que no se puede probar en la
    laptop: los avisos al celular necesitan HTTPS de verdad.
-4. Desde el teléfono, «Agregar a la pantalla de inicio»: ahí se ve la parte de
-   aplicación instalable.
+
+### En el teléfono
+
+**Android (Chrome).** Al entrar, el propio Chrome ofrece instalarla; también
+está el botón «Instalar la app» en la pantalla de Notificaciones, o el menú de
+Chrome → «Instalar aplicación». Los avisos funcionan **aunque no se instale**:
+basta con activarlos desde la pantalla de Notificaciones.
+
+**iPhone y iPad (Safari).** Aquí el orden importa y no hay vuelta:
+
+1. Abrir la dirección **en Safari** (no en Chrome).
+2. Botón de compartir → **«Añadir a pantalla de inicio»**.
+3. Abrir el sistema **desde ese ícono**.
+4. Recién ahí, en Notificaciones, «Activar los avisos en este dispositivo».
+
+En una pestaña de Safari, iOS no permite avisos de ningún sitio web: el sistema
+lo detecta y muestra estos pasos en lugar del botón. Hace falta **iOS 16.4 o
+más nuevo** (marzo de 2023); un iPhone que se quedó en iOS 15 puede usar todo el
+sistema, pero no recibirá avisos.
+
+Si alguien borra el ícono de la pantalla de inicio, su teléfono deja de estar
+suscrito y hay que volver a activarlo.
 
 ## 6. Lo que tiene que correr cada día
 

@@ -1,0 +1,191 @@
+/* ==========================================================================
+   Panel de administración — el mismo lenguaje visual que el resto del sistema
+   --------------------------------------------------------------------------
+   El admin de Django define sus colores como variables CSS. Redefinirlas es
+   todo lo que hace falta: no se pelea con sus selectores, no se rompe nada al
+   actualizar Django, y el modo oscuro del navegador sigue funcionando solo.
+
+   Lo que se busca no es que parezca otra cosa, sino que quien viene del
+   sistema reconozca dónde está: el mismo verde, la misma tipografía, los
+   mismos bordes redondeados.
+   ========================================================================== */
+
+:root {
+  --sa-verde:   #2ec4b6;
+  --sa-verde-2: #26aa9e;
+  --sa-tinta:   #12403b;
+  --sa-suave:   #5b7d78;
+  --sa-menta:   #f1fbf8;
+  --sa-borde:   #e2ece9;
+
+  /* Marca y encabezado */
+  --primary: var(--sa-tinta);
+  --secondary: var(--sa-verde);
+  --accent: var(--sa-verde);
+  --primary-fg: #ffffff;
+  --header-color: #ffffff;
+  --header-bg: var(--sa-tinta);
+  --header-branding-color: #ffffff;
+  --header-link-color: #ffffff;
+
+  /* Cuerpo */
+  --body-fg: #1f2d2b;
+  --body-bg: var(--sa-menta);
+  --body-quiet-color: var(--sa-suave);
+  --body-loud-color: var(--sa-tinta);
+  --border-color: var(--sa-borde);
+  --hairline-color: var(--sa-borde);
+
+  /* Migas de pan */
+  --breadcrumbs-fg: #ffffff;
+  --breadcrumbs-link-fg: #ffffff;
+  --breadcrumbs-bg: var(--sa-verde-2);
+
+  /* Enlaces y botones */
+  --link-fg: #157f75;
+  --link-hover-color: var(--sa-tinta);
+  --link-selected-fg: var(--sa-tinta);
+  --button-bg: var(--sa-verde);
+  --button-fg: #ffffff;
+  --button-hover-bg: var(--sa-verde-2);
+  --default-button-bg: var(--sa-verde);
+  --default-button-hover-bg: var(--sa-verde-2);
+  --close-button-bg: var(--sa-suave);
+  --close-button-hover-bg: var(--sa-tinta);
+  --object-tools-bg: var(--sa-tinta);
+  --object-tools-hover-bg: var(--sa-verde-2);
+
+  /* Selección y avisos */
+  --selected-bg: #e6f6f3;
+  --selected-row: #fff8e1;
+  --message-success-bg: #e6f6f3;
+  --message-warning-bg: #fff4e0;
+  --message-error-bg: #fdeceb;
+
+  --font-family-primary: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-family-monospace: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+/* La tipografía del sistema. Se sirve desde el propio servidor, igual que en
+   el resto de las pantallas. */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('../vendor/nunito/nunito-latin.woff2') format('woff2');
+}
+
+/* ── La marca del encabezado ─────────────────────────────────────────────── */
+
+.sa-marca a {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  text-decoration: none;
+}
+.sa-marca-escudo { height: 38px; width: auto; }
+.sa-marca-texto { display: flex; flex-direction: column; line-height: 1.2; }
+.sa-marca-texto strong { font-size: 1.05rem; font-weight: 800; }
+.sa-marca-texto small { font-size: .72rem; opacity: .75; font-weight: 600; }
+
+#user-tools { font-size: .78rem; }
+#user-tools .sa-volver {
+  background: rgba(255, 255, 255, .16);
+  padding: .35rem .7rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+#user-tools .sa-volver:hover { background: rgba(255, 255, 255, .3); }
+.sa-separador { opacity: .45; margin: 0 .35rem; }
+
+/* ── Bordes redondeados, como en el resto del sistema ────────────────────── */
+
+.module,
+#content-main .module,
+.dashboard #content-main .module,
+#changelist,
+#changelist-filter,
+.inline-group,
+fieldset.module {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+  border-radius: 999px;
+  font-weight: 700;
+  padding: .5rem 1.1rem;
+}
+
+.object-tools a, .object-tools a:link, .object-tools a:visited {
+  border-radius: 999px;
+  font-weight: 700;
+  text-transform: none;    /* «AGREGAR ESTUDIANTE» en mayúsculas grita sin necesidad */
+  letter-spacing: 0;
+}
+
+#changelist-filter h2, .module h2, .module caption {
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── La portada: que se lea como una lista de cosas, no como una tabla ───── */
+
+.dashboard .module table th { font-weight: 700; }
+.dashboard .module table td a, .dashboard .module table th a { padding: .5rem .8rem; }
+.dashboard #content-main .module { margin-bottom: 1.2rem; }
+
+/* ── Descripciones de los grupos de campos ───────────────────────────────── */
+
+.help, .form-row .help, fieldset .description {
+  color: var(--sa-suave);
+  font-size: .82rem;
+  line-height: 1.5;
+}
+fieldset .description {
+  background: var(--sa-menta);
+  border-left: 3px solid var(--sa-verde);
+  padding: .6rem .9rem;
+  border-radius: 0 10px 10px 0;
+  margin-bottom: 1rem;
+}
+
+/* ── Campos: más aire y más alto, que se usa también desde una tablet ────── */
+
+input[type=text], input[type=password], input[type=email], input[type=url],
+input[type=number], input[type=tel], textarea, select, .vTextField {
+  border-radius: 10px;
+  padding: .45rem .6rem;
+  border: 1px solid var(--border-color);
+}
+input:focus, textarea:focus, select:focus {
+  outline: 3px solid rgba(46, 196, 182, .35);
+  outline-offset: 0;
+  border-color: var(--sa-verde);
+}
+
+/* Las filas de la lista, más separadas: se leen apellidos, no números. */
+#result_list tbody td, #result_list tbody th { padding: .55rem .65rem; }
+#result_list tbody tr:hover { background: var(--selected-bg); }
+
+/* ── Modo oscuro: solo lo que el admin no resuelve solo ──────────────────── */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --body-bg: #0f1c1a;
+    --body-fg: #e6f1ef;
+    --header-bg: #0b1614;
+    --breadcrumbs-bg: #14403a;
+    --selected-bg: #14403a;
+    --selected-row: #3d3620;
+    --border-color: #24413c;
+    --hairline-color: #24413c;
+    --link-fg: #63d8cb;
+    --link-hover-color: #9fe9e0;
+    --body-quiet-color: #9ab8b3;
+  }
+  fieldset .description { background: #14403a; }
+}

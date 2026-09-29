@@ -1,0 +1,50 @@
+{% extends "admin/base.html" %}
+{% load static estaticos %}
+{% comment %}
+  El encabezado del panel de administración: el escudo del colegio, su nombre y
+  una salida visible hacia el sistema. Sin esto, quien entra a corregir un dato
+  aterriza en una pantalla que dice «Django administration» y no encuentra el
+  camino de vuelta.
+
+  Lo único que se reemplaza es la marca y la hoja de estilos; todo lo demás
+  —los formularios, los filtros, los permisos— sigue siendo el admin de Django,
+  que es justamente lo que lo hace confiable.
+{% endcomment %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} · {% endif %}{{ title }} · U.E. Eduardo Abaroa Tarde{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+  <link rel="stylesheet" href="{% static_v 'css/admin.css' %}">
+  <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name" class="sa-marca">
+  <a href="{% url 'admin:index' %}">
+    <img src="{% static 'img/escudo-chico.png' %}" alt="" aria-hidden="true" class="sa-marca-escudo">
+    <span class="sa-marca-texto">
+      <strong>U.E. «Eduardo Abaroa Tarde»</strong>
+      <small>Administración · Nivel Secundario</small>
+    </span>
+  </a>
+</div>
+{% endblock %}
+
+{% block usertools %}
+  {% if has_permission %}
+  <div id="user-tools">
+    <a href="/" class="sa-volver">← Volver al sistema</a>
+    <span class="sa-separador">·</span>
+    {% firstof user.get_short_name user.get_username %}
+    <span class="sa-separador">·</span>
+    <a href="{% url 'admin:password_change' %}">Cambiar mi contraseña</a>
+    <span class="sa-separador">·</span>
+    <form id="logout-form" method="post" action="{% url 'admin:logout' %}">
+      {% csrf_token %}
+      <button type="submit">Salir</button>
+    </form>
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

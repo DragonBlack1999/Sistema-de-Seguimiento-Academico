@@ -6,6 +6,10 @@ from django.views.generic import TemplateView
 
 from apps.mantenimiento.views import salud
 
+# Le pone al panel de administración el nombre del colegio y un orden que se
+# entienda. Se importa por el efecto, no por lo que exporta.
+from . import admin as _admin_del_colegio  # noqa: F401
+
 urlpatterns = [
     # El service worker se sirve desde la raíz porque solo manda sobre las
     # páginas que cuelgan de su carpeta: desde /static/ no cubriría nada.

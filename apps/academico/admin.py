@@ -41,8 +41,12 @@ enviar_boletin_por_correo.short_description = 'Enviar boletín por correo (estud
 
 @admin.register(Gestion)
 class GestionAdmin(admin.ModelAdmin):
+    """El año escolar. Solo uno puede estar activo: es el que ve todo el sistema."""
+
     list_display = ('anio', 'activa', 'fecha_inicio', 'fecha_fin')
     list_filter = ('activa',)
+    ordering = ('-anio',)
+    search_fields = ('anio',)
 
 
 class DiaCapacitacionInline(admin.TabularInline):
@@ -53,9 +57,20 @@ class DiaCapacitacionInline(admin.TabularInline):
 
 @admin.register(Curso)
 class CursoAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'gestion', 'nivel', 'grado', 'paralelo', 'dias_de_capacitacion')
-    list_filter = ('gestion', 'nivel')
+    list_display = ('__str__', 'gestion', 'nivel', 'grado', 'paralelo',
+                    'cuantos_estudiantes', 'dias_de_capacitacion')
+    list_filter = ('gestion', 'nivel', 'grado')
+    search_fields = ('grado', 'paralelo')
+    ordering = ('-gestion__anio', 'grado', 'paralelo')
     inlines = [DiaCapacitacionInline]
+    list_select_related = ('gestion',)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('dias_capacitacion')
+
+    @admin.display(description='Estudiantes')
+    def cuantos_estudiantes(self, obj):
+        return obj.matriculas.filter(activa=True).count()
 
     @admin.display(description='Capacitación')
     def dias_de_capacitacion(self, obj):
@@ -64,26 +79,50 @@ class CursoAdmin(admin.ModelAdmin):
 
 @admin.register(Materia)
 class MateriaAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'cuantos_cursos')
     search_fields = ('nombre',)
+    ordering = ('nombre',)
+
+    @admin.display(description='Cursos en los que se dicta')
+    def cuantos_cursos(self, obj):
+        return obj.asignaciones.count()
 
 
 @admin.register(Estudiante)
 class EstudianteAdmin(admin.ModelAdmin):
+    """La ficha del estudiante.
+
+    Al guardar, el formulario crea o actualiza tres cosas a la vez: su cuenta
+    de acceso, su matrícula en el curso y la cuenta de su tutor a partir del
+    carnet. Por eso se edita aquí y no en «Cuentas de acceso».
+    """
+
     form = EstudianteForm
-    # curso_actual y los datos del tutor ya no son columnas: se muestran calculados
-    list_display = ('rude', 'usuario', 'curso_de', 'tutor')
+    list_display = ('rude', 'nombre', 'curso_de', 'tutor', 'celular')
+    list_display_links = ('rude', 'nombre')
     search_fields = ('rude', 'usuario__first_name', 'usuario__last_name',
-                     'tutor__first_name', 'tutor__last_name')
-    list_filter = ('matriculas__curso',)
+                     'tutor__first_name', 'tutor__last_name', 'usuario__ci')
+    list_filter = ('matriculas__curso__gestion', 'matriculas__curso', 'genero')
+    ordering = ('usuario__last_name', 'usuario__first_name')
+    list_select_related = ('usuario', 'tutor')
+    list_per_page = 40
     actions = [enviar_boletin_por_correo]
     readonly_fields = ('tutor',)   # derivado del CI que se escribe en el formulario
+
+    @admin.display(description='Estudiante', ordering='usuario__last_name')
+    def nombre(self, obj):
+        # Sin el «(Estudiante)» que agrega el __str__ del usuario: en una lista
+        # de estudiantes, repetirlo 402 veces no informa de nada.
+        return obj.usuario.get_full_name() or obj.usuario.username
 
     @admin.display(description='Curso')
     def curso_de(self, obj):
         return obj.curso_actual or '—'
+
     fieldsets = (
         ('Datos de acceso (usuario del estudiante)', {
             'fields': ('nombres', 'apellidos', 'rude', 'ci_estudiante', 'email_estudiante'),
+            'description': 'Entra al sistema con su RUDE como usuario y su carnet como contraseña.',
         }),
         ('Datos personales', {
             'fields': ('fecha_nacimiento', 'genero', 'nacionalidad', 'departamento'),
@@ -93,9 +132,12 @@ class EstudianteAdmin(admin.ModelAdmin):
         }),
         ('Datos académicos', {
             'fields': ('curso',),
+            'description': 'Al cambiar el curso se cierra la matrícula anterior y se abre la nueva.',
         }),
         ('Datos del padre/tutor', {
             'fields': ('nombre_tutor', 'ci_tutor', 'telefono_tutor', 'email_tutor'),
+            'description': 'Con el carnet se crea su cuenta, si todavía no la tiene. '
+                           'Entra escribiendo ese mismo carnet en los dos campos.',
         }),
     )
 
@@ -104,22 +146,41 @@ class EstudianteAdmin(admin.ModelAdmin):
 class MatriculaAdmin(admin.ModelAdmin):
     list_display = ('estudiante', 'curso', 'activa', 'fecha_matricula')
     list_filter = ('curso__gestion', 'curso', 'activa')
+    search_fields = ('estudiante__rude', 'estudiante__usuario__first_name',
+                     'estudiante__usuario__last_name')
+    autocomplete_fields = ('estudiante', 'curso')
+    list_select_related = ('estudiante__usuario', 'curso')
+    date_hierarchy = 'fecha_matricula'
+    list_per_page = 50
 
 
 @admin.register(AsignacionDocente)
 class AsignacionDocenteAdmin(admin.ModelAdmin):
+    """Quién dicta qué, y en qué curso. De aquí cuelgan las planillas y el horario."""
+
     form = AsignacionDocenteForm
     list_display = ('profesor', 'materia', 'curso')
     list_filter = ('curso__gestion', 'curso', 'materia')
+    search_fields = ('profesor__first_name', 'profesor__last_name', 'materia__nombre')
+    ordering = ('curso__grado', 'curso__paralelo', 'materia__nombre')
+    list_select_related = ('profesor', 'materia', 'curso')
+    list_per_page = 50
 
 
 @admin.register(Horario)
 class HorarioAdmin(admin.ModelAdmin):
     list_display = ('asignacion', 'dia', 'periodo', 'aula')
     list_filter = ('dia', 'periodo__curso')
+    search_fields = ('asignacion__materia__nombre', 'asignacion__profesor__last_name', 'aula')
+    autocomplete_fields = ('asignacion', 'periodo')
+    list_select_related = ('asignacion__materia', 'asignacion__profesor', 'periodo')
+    list_per_page = 50
 
 
 @admin.register(Periodo)
 class PeriodoAdmin(admin.ModelAdmin):
     list_display = ('curso', 'orden', 'etiqueta', 'es_recreo')
     list_filter = ('curso', 'es_recreo')
+    search_fields = ('etiqueta', 'curso__grado')
+    autocomplete_fields = ('curso',)
+    ordering = ('curso', 'orden')

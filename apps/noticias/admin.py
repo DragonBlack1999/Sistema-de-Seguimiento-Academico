@@ -8,4 +8,7 @@ class NoticiaAdmin(admin.ModelAdmin):
     list_display = ('titulo', 'tipo', 'curso', 'publicada', 'fijada', 'fecha_publicacion')
     list_filter = ('tipo', 'publicada', 'fijada', 'curso')
     search_fields = ('titulo', 'cuerpo')
+    autocomplete_fields = ('curso',)
     list_select_related = ('curso', 'publicado_por')
+    date_hierarchy = 'fecha_publicacion'
+    ordering = ('-fecha_publicacion',)

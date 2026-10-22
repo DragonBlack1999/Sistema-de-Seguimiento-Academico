@@ -1,28 +1,15 @@
 from django import forms
 from django.utils import timezone
 
+from apps.campos import campo_fecha
+
 from .models import EntregaTarea, Tarea
-
-
-def _campo_fecha(label, initial=None):
-    """Fuerza el formato ISO en ambos sentidos.
-
-    Con LANGUAGE_CODE='es-bo', DateInput renderiza dd/mm/aaaa y el navegador deja el
-    <input type="date"> vacío, borrando la fecha al guardar. Es el mismo problema de
-    localización que ya obligó a usar |unlocalize en los inputs numéricos.
-    """
-    return forms.DateField(
-        label=label,
-        initial=initial,
-        input_formats=['%Y-%m-%d', '%d/%m/%Y'],
-        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'form-control'}),
-    )
 
 
 class TareaForm(forms.ModelForm):
     # initial explícito: al declarar el campo se pierde el default del modelo.
-    fecha_asignacion = _campo_fecha('Fecha de asignación', initial=timezone.localdate)
-    fecha_entrega = _campo_fecha('Fecha límite de entrega')
+    fecha_asignacion = campo_fecha('Fecha de asignación', initial=timezone.localdate)
+    fecha_entrega = campo_fecha('Fecha límite de entrega')
 
     class Meta:
         model = Tarea

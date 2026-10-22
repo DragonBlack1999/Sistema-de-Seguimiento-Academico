@@ -141,7 +141,12 @@ def buscar_boletines(request):
         .prefetch_related('matriculas__curso__gestion')
     )
 
-    return render(request, 'comunicaciones/buscar_boletines.html', {
+    # Mientras se escribe, el navegador pide solo la tabla.
+    plantilla = ('comunicaciones/_tabla_boletines.html'
+                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                 else 'comunicaciones/buscar_boletines.html')
+
+    return render(request, plantilla, {
         'consulta': consulta,
         'estudiantes': estudiantes,
     })

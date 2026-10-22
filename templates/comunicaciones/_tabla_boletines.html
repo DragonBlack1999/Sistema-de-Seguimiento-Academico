@@ -1,0 +1,39 @@
+{% comment %}
+  La tabla sola: es lo que el servidor devuelve mientras alguien escribe en el
+  buscador, sin tener que mandar otra vez la página entera.
+{% endcomment %}
+<table class="table table-striped bg-white shadow-sm mt-4 align-middle">
+    <thead>
+        <tr>
+            <th>Estudiante</th>
+            <th>RUDE</th>
+            <th>Curso</th>
+            <th class="text-end">Boletín</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for estudiante in estudiantes %}
+        <tr>
+            <td>{{ estudiante.usuario.get_full_name }}</td>
+            <td><span class="font-monospace">{{ estudiante.rude }}</span></td>
+            <td>{{ estudiante.curso_actual|default:"Sin curso asignado" }}</td>
+            <td class="text-end">
+                <a class="btn btn-sm btn-outline-primary"
+                   href="{% url 'comunicaciones:boletin_estudiante' estudiante.pk %}">
+                    Descargar PDF
+                </a>
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="4" class="text-center text-muted py-4">
+                {% if consulta %}
+                    No se encontró ningún estudiante para <strong>{{ consulta }}</strong>.
+                {% else %}
+                    Todavía no hay estudiantes registrados.
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>

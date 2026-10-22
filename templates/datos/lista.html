@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load estaticos %}
 {% block titulo %}{{ ficha.titulo }}{% endblock %}
 {% block nav_datos %}activo{% endblock %}
 {% block contenido %}
@@ -12,7 +13,7 @@
 </div>
 
 {% if ficha.tiene_buscador or desplegables %}
-<form method="get" class="mt-4">
+<form method="get" class="mt-4" data-busqueda-viva="#tabla">
     {% if ficha.tiene_buscador %}
     <div class="input-group input-group-lg shadow-sm">
         <input type="search" name="q" class="form-control" value="{{ consulta }}"
@@ -47,44 +48,12 @@
 </form>
 {% endif %}
 
-<table class="table table-striped bg-white shadow-sm mt-4 align-middle sa-tabla-apilada">
-    <thead>
-        <tr>
-            {% for columna in ficha.columnas %}<th>{{ columna.rotulo }}</th>{% endfor %}
-            {% if ficha.tiene_estado %}<th>Estado</th>{% endif %}
-        </tr>
-    </thead>
-    <tbody>
-        {% for fila in filas %}
-        <tr{% if fila.de_baja %} class="text-muted"{% endif %}>
-            {% for celda in fila.celdas %}
-            <td {% if celda.principal %}data-principal{% else %}data-rotulo="{{ celda.rotulo }}"{% endif %}>{{ celda.valor }}</td>
-            {% endfor %}
-            {% if ficha.tiene_estado %}
-            <td data-rotulo="Estado">
-                {% if fila.de_baja %}
-                    <span class="badge bg-secondary">Dado de baja</span>
-                {% else %}
-                    <span class="badge bg-success">Activo</span>
-                {% endif %}
-            </td>
-            {% endif %}
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="{{ ficha.columnas|length|add:1 }}" class="text-center text-muted py-4">
-                {% if hay_filtros_puestos %}
-                    No se encontró nada con esa búsqueda.
-                    <a href="{% url 'datos:lista' ficha.clave %}">Ver todo</a>.
-                {% else %}
-                    Todavía no hay {{ ficha.titulo|lower }} cargados.
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div id="tabla">
+{% include 'datos/_tabla.html' %}
+</div>
 
-{% include 'datos/_paginacion.html' %}
+{% endblock %}
 
+{% block scripts %}
+<script src="{% static_v 'js/busqueda-viva.js' %}"></script>
 {% endblock %}

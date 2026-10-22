@@ -14,13 +14,13 @@
     </div>
     <div class="btn-group">
         {% if pagina.has_previous %}
-        <a class="btn btn-outline-secondary btn-sm"
+        <a class="btn btn-outline-secondary btn-sm" data-pagina
            href="?{{ direccion_sin_pagina }}page={{ pagina.previous_page_number }}">← Anterior</a>
         {% else %}
         <span class="btn btn-outline-secondary btn-sm disabled">← Anterior</span>
         {% endif %}
         {% if pagina.has_next %}
-        <a class="btn btn-outline-secondary btn-sm"
+        <a class="btn btn-outline-secondary btn-sm" data-pagina
            href="?{{ direccion_sin_pagina }}page={{ pagina.next_page_number }}">Siguiente →</a>
         {% else %}
         <span class="btn btn-outline-secondary btn-sm disabled">Siguiente →</span>

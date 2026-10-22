@@ -1,0 +1,46 @@
+{% comment %}
+  La tabla y su paginación, en un archivo aparte.
+
+  Es el pedazo que el servidor devuelve solo cuando alguien está buscando: así
+  escribir una letra trae cincuenta filas en vez de la página entera con su
+  barra, su escudo y sus estilos.
+{% endcomment %}
+<table class="table table-striped bg-white shadow-sm mt-4 align-middle sa-tabla-apilada">
+    <thead>
+        <tr>
+            {% for columna in ficha.columnas %}<th>{{ columna.rotulo }}</th>{% endfor %}
+            {% if ficha.tiene_estado %}<th>Estado</th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for fila in filas %}
+        <tr{% if fila.de_baja %} class="text-muted"{% endif %}>
+            {% for celda in fila.celdas %}
+            <td {% if celda.principal %}data-principal{% else %}data-rotulo="{{ celda.rotulo }}"{% endif %}>{{ celda.valor }}</td>
+            {% endfor %}
+            {% if ficha.tiene_estado %}
+            <td data-rotulo="Estado">
+                {% if fila.de_baja %}
+                    <span class="badge bg-secondary">Dado de baja</span>
+                {% else %}
+                    <span class="badge bg-success">Activo</span>
+                {% endif %}
+            </td>
+            {% endif %}
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="{{ ficha.columnas|length|add:1 }}" class="text-center text-muted py-4">
+                {% if hay_filtros_puestos %}
+                    No se encontró nada con esa búsqueda.
+                    <a href="{% url 'datos:lista' ficha.clave %}">Ver todo</a>.
+                {% else %}
+                    Todavía no hay {{ ficha.titulo|lower }} cargados.
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% include 'datos/_paginacion.html' %}

@@ -1,15 +1,20 @@
 from django import forms
+from django.utils import timezone
+
+from apps.campos import campo_fecha, campo_hora
 
 from .models import Citacion
 
 
 class CitacionForm(forms.ModelForm):
+    # Una citación es para adelante: el calendario no ofrece días pasados.
+    fecha = campo_fecha('Fecha de la citación', minimo='hoy')
+    hora = campo_hora('Hora', required=False, ayuda='Si la dejas vacía, se cita sin hora fija.')
+
     class Meta:
         model = Citacion
         fields = ['estudiante', 'motivo', 'fecha', 'hora', 'lugar']
         widgets = {
-            'fecha': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'hora': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'motivo': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
             'lugar': forms.TextInput(attrs={'class': 'form-control'}),
             # La pantalla lo reemplaza por un buscador con sugerencias; aquí

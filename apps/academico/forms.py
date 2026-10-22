@@ -1,6 +1,7 @@
 from django import forms
 
 from apps.accounts.models import Usuario
+from apps.campos import campo_fecha
 from apps.accounts.services import (
     desactivar_tutor_huerfano, obtener_o_crear_tutor, validar_ci_tutor_disponible,
 )
@@ -18,6 +19,13 @@ class EstudianteForm(forms.ModelForm):
       - los del tutor viven en el `Usuario` del tutor.
     El formulario los sigue pidiendo juntos, que es lo comodo para secretaria.
     """
+
+    # Era una caja de texto donde había que escribir la fecha adivinando el
+    # formato. Nadie nace mañana: el calendario tampoco deja elegir el futuro.
+    fecha_nacimiento = campo_fecha(
+        'Fecha de nacimiento', required=False, maximo='hoy',
+        ayuda='Se elige en el calendario.',
+    )
 
     nombres = forms.CharField(label='Nombres', max_length=150)
     apellidos = forms.CharField(label='Apellidos', max_length=150)

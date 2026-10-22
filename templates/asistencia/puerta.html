@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load estaticos %}
 {% block titulo %}Control de entrada{% endblock %}
 {% block contenido %}
 
@@ -62,7 +63,7 @@
 </div>
 
 <div class="puerta-buscador mt-3">
-  <form method="get" class="input-group input-group-lg shadow-sm">
+  <form method="get" class="input-group input-group-lg shadow-sm" data-busqueda-viva="#tabla">
     <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
     <input type="search" name="q" value="{{ consulta }}" autofocus class="form-control"
            placeholder="Escribe el nombre, apellido o RUDE del estudiante que entra"
@@ -74,63 +75,9 @@
   </form>
 </div>
 
-<table class="table bg-white shadow-sm mt-3 align-middle">
-  <thead>
-    <tr>
-      <th>Estudiante</th>
-      <th>Curso</th>
-      <th class="text-center">Estado</th>
-      <th class="text-center">Hora</th>
-      <th class="text-end">Registrar</th>
-    </tr>
-  </thead>
-  <tbody>
-  {% for fila in filas %}
-    <tr class="puerta-fila" data-estudiante="{{ fila.matricula.estudiante.pk }}">
-      <td>
-        {{ fila.matricula.estudiante.usuario.get_full_name }}
-        <span class="d-block small text-muted font-monospace">{{ fila.matricula.estudiante.rude }}</span>
-      </td>
-      <td class="small">{{ fila.matricula.curso }}</td>
-      <td class="text-center celda-estado">
-        {% if fila.asistencia %}
-          {% if fila.asistencia.estado == 'PRESENTE' %}<span class="badge bg-success">
-          {% elif fila.asistencia.estado == 'ATRASO' %}<span class="badge bg-warning text-dark">
-          {% elif fila.asistencia.estado == 'FALTA' %}<span class="badge bg-danger">
-          {% else %}<span class="badge bg-info text-dark">{% endif %}
-          {{ fila.asistencia.get_estado_display }}</span>
-        {% else %}
-          <span class="badge bg-light text-secondary">Sin registrar</span>
-        {% endif %}
-      </td>
-      <td class="text-center celda-hora font-monospace">
-        {{ fila.asistencia.hora_llegada|time:"H:i"|default:"—" }}
-      </td>
-      <td class="text-end">
-        <button type="button" class="btn btn-sm btn-success btn-entrada">Marcar entrada</button>
-        <div class="btn-group btn-group-sm ms-1">
-          <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-            Otro
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            {% for valor, etiqueta in estados %}
-              <li><button type="button" class="dropdown-item btn-estado" data-estado="{{ valor }}">{{ etiqueta }}</button></li>
-            {% endfor %}
-          </ul>
-        </div>
-      </td>
-    </tr>
-  {% empty %}
-    <tr><td colspan="5" class="text-center text-muted py-4">
-      {% if consulta %}
-        No se encontró ningún estudiante para <strong>{{ consulta }}</strong>.
-      {% else %}
-        No hay estudiantes con matrícula activa en esta gestión.
-      {% endif %}
-    </td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+<div id="tabla">
+{% include 'asistencia/_tabla_puerta.html' %}
+</div>
 
 <form method="post" action="{% url 'asistencia:cerrar' %}"
       onsubmit="return confirm('Se marcará como FALTA a todos los que no fueron registrados hoy. ¿Continuar?');">
@@ -142,6 +89,7 @@
   </span>
 </form>
 
+<script src="{% static_v 'js/busqueda-viva.js' %}"></script>
 <script>
 (function () {
   const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -191,23 +139,32 @@
     }
   }
 
-  document.querySelectorAll('.puerta-fila').forEach(function (fila) {
-    fila.querySelector('.btn-entrada').addEventListener('click', () => marcar(fila, null));
-    fila.querySelectorAll('.btn-estado').forEach(function (boton) {
-      boton.addEventListener('click', () => marcar(fila, boton.dataset.estado));
-    });
+  // Un solo oyente en la tabla, no uno por fila: el buscador reemplaza las
+  // filas mientras se escribe, y unos botones recién llegados no tendrían a
+  // nadie escuchándolos. Marcar la entrada dejaría de funcionar sin avisar.
+  document.querySelector('#tabla').addEventListener('click', function (evento) {
+    const entrada = evento.target.closest('.btn-entrada');
+    const estado = evento.target.closest('.btn-estado');
+    if (!entrada && !estado) return;
+    const fila = evento.target.closest('.puerta-fila');
+    if (!fila) return;
+    marcar(fila, estado ? estado.dataset.estado : null);
   });
 
   // En móvil la tabla se desplaza en horizontal y recortaría el menú de
   // estados. Posicionándolo respecto a la ventana, se sale del recorte.
   // Se espera a DOMContentLoaded porque este bloque va antes del de Bootstrap.
-  document.addEventListener('DOMContentLoaded', function () {
+  function prepararDesplegables() {
     document.querySelectorAll('.puerta-fila [data-bs-toggle="dropdown"]').forEach(function (boton) {
       bootstrap.Dropdown.getOrCreateInstance(boton, {
         popperConfig: (predeterminado) => ({ ...predeterminado, strategy: 'fixed' }),
       });
     });
-  });
+  }
+
+  document.addEventListener('DOMContentLoaded', prepararDesplegables);
+  // Cada vez que el buscador trae filas nuevas hay que volver a prepararlos.
+  document.addEventListener('tabla-renovada', prepararDesplegables);
 })();
 </script>
 {% endif %}

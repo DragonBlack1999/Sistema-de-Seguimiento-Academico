@@ -1,0 +1,62 @@
+{% comment %}
+  La tabla de la puerta, sola: es lo que vuelve del servidor mientras alguien
+  escribe en el buscador. Los botones no enganchan nada aquí; de eso se ocupa
+  un único oyente en el contenedor, que sigue vivo cuando estas filas cambian.
+{% endcomment %}
+<table class="table bg-white shadow-sm mt-3 align-middle">
+  <thead>
+    <tr>
+      <th>Estudiante</th>
+      <th>Curso</th>
+      <th class="text-center">Estado</th>
+      <th class="text-center">Hora</th>
+      <th class="text-end">Registrar</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for fila in filas %}
+    <tr class="puerta-fila" data-estudiante="{{ fila.matricula.estudiante.pk }}">
+      <td>
+        {{ fila.matricula.estudiante.usuario.get_full_name }}
+        <span class="d-block small text-muted font-monospace">{{ fila.matricula.estudiante.rude }}</span>
+      </td>
+      <td class="small">{{ fila.matricula.curso }}</td>
+      <td class="text-center celda-estado">
+        {% if fila.asistencia %}
+          {% if fila.asistencia.estado == 'PRESENTE' %}<span class="badge bg-success">
+          {% elif fila.asistencia.estado == 'ATRASO' %}<span class="badge bg-warning text-dark">
+          {% elif fila.asistencia.estado == 'FALTA' %}<span class="badge bg-danger">
+          {% else %}<span class="badge bg-info text-dark">{% endif %}
+          {{ fila.asistencia.get_estado_display }}</span>
+        {% else %}
+          <span class="badge bg-light text-secondary">Sin registrar</span>
+        {% endif %}
+      </td>
+      <td class="text-center celda-hora font-monospace">
+        {{ fila.asistencia.hora_llegada|time:"H:i"|default:"—" }}
+      </td>
+      <td class="text-end">
+        <button type="button" class="btn btn-sm btn-success btn-entrada">Marcar entrada</button>
+        <div class="btn-group btn-group-sm ms-1">
+          <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            Otro
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% for valor, etiqueta in estados %}
+              <li><button type="button" class="dropdown-item btn-estado" data-estado="{{ valor }}">{{ etiqueta }}</button></li>
+            {% endfor %}
+          </ul>
+        </div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="text-center text-muted py-4">
+      {% if consulta %}
+        No se encontró ningún estudiante para <strong>{{ consulta }}</strong>.
+      {% else %}
+        No hay estudiantes con matrícula activa en esta gestión.
+      {% endif %}
+    </td></tr>
+  {% endfor %}
+  </tbody>
+</table>

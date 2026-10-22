@@ -2,17 +2,15 @@ from django import forms
 from django.db.models import Q
 
 from apps.academico.models import Gestion
+from apps.campos import campo_fecha
 
 from .models import Noticia
 
 
 class NoticiaForm(forms.ModelForm):
-    # Formato ISO forzado: con LANGUAGE_CODE='es-bo' el widget renderiza
-    # dd/mm/aaaa y el navegador vacía el campo al editar.
-    fecha_evento = forms.DateField(
-        label='Fecha de la actividad', required=False,
-        input_formats=['%Y-%m-%d', '%d/%m/%Y'],
-        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'form-control'}),
+    fecha_evento = campo_fecha(
+        'Fecha de la actividad', required=False,
+        ayuda='Cuándo es la actividad. Solo hace falta para las actividades.',
     )
 
     class Meta:

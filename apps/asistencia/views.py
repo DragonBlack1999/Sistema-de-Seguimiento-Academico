@@ -82,7 +82,12 @@ def puerta(request):
     faltas = sum(1 for a in registros.values() if a.estado == Asistencia.Estado.FALTA)
     licencias = sum(1 for a in registros.values() if a.estado == Asistencia.Estado.LICENCIA)
 
-    return render(request, 'asistencia/puerta.html', {
+    # Mientras se escribe en el buscador, el navegador pide solo la tabla.
+    plantilla = ('asistencia/_tabla_puerta.html'
+                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                 else 'asistencia/puerta.html')
+
+    return render(request, plantilla, {
         'gestion': gestion,
         'fecha': fecha,
         'consulta': consulta,

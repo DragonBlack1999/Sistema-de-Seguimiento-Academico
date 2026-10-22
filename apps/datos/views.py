@@ -74,7 +74,13 @@ def lista(request, clave):
         for f in ficha.filtros
     ]
 
-    return render(request, 'datos/lista.html', {
+    # Mientras se escribe en el buscador, el navegador pide solo la tabla: no
+    # tiene sentido mandarle otra vez la barra, el escudo y los estilos.
+    plantilla = ('datos/_tabla.html'
+                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                 else 'datos/lista.html')
+
+    return render(request, plantilla, {
         'ficha': ficha,
         'filas': filas,
         'pagina': pagina,

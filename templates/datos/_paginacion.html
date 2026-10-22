@@ -1,0 +1,32 @@
+{% comment %}
+  La paginación, con la búsqueda y los filtros a cuestas.
+
+  `direccion_sin_pagina` trae la misma consulta sin el número de página; sin
+  eso, pasar a la siguiente perdería lo que se estaba buscando, que con
+  diecisiete páginas de estudiantes se nota enseguida.
+{% endcomment %}
+{% if pagina.paginator.num_pages > 1 %}
+<nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"
+     aria-label="Páginas de {{ ficha.titulo|lower }}">
+    <div class="text-muted small">
+        Página {{ pagina.number }} de {{ pagina.paginator.num_pages }} ·
+        {{ total }} en total
+    </div>
+    <div class="btn-group">
+        {% if pagina.has_previous %}
+        <a class="btn btn-outline-secondary btn-sm"
+           href="?{{ direccion_sin_pagina }}page={{ pagina.previous_page_number }}">← Anterior</a>
+        {% else %}
+        <span class="btn btn-outline-secondary btn-sm disabled">← Anterior</span>
+        {% endif %}
+        {% if pagina.has_next %}
+        <a class="btn btn-outline-secondary btn-sm"
+           href="?{{ direccion_sin_pagina }}page={{ pagina.next_page_number }}">Siguiente →</a>
+        {% else %}
+        <span class="btn btn-outline-secondary btn-sm disabled">Siguiente →</span>
+        {% endif %}
+    </div>
+</nav>
+{% elif total %}
+<p class="text-muted small mt-2">{{ total }} en total.</p>
+{% endif %}

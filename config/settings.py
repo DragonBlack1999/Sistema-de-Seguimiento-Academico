@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     'apps.padres',
     'apps.mensajeria',
     'apps.mantenimiento',
+    'apps.datos',
 ]
 
 MIDDLEWARE = [

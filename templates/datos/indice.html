@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block titulo %}Gestión de datos{% endblock %}
+{% block nav_datos %}activo{% endblock %}
+{% block contenido %}
+
+<h2 class="sa-saludo">Gestión de datos</h2>
+<p class="sa-subsaludo">Todo lo que se administra del colegio, en un solo lugar.</p>
+
+{% for grupo, tarjetas in grupos %}
+<div class="sa-titulillo mt-4">{{ grupo }}</div>
+<div class="sa-accesos">
+    {% for tarjeta in tarjetas %}
+    <a class="sa-acceso {{ tarjeta.ficha.icono }}" href="{% url 'datos:lista' tarjeta.ficha.clave %}">
+        <div class="sa-acceso-dato">{{ tarjeta.cuantos }}</div>
+        <div class="sa-acceso-nombre">{{ tarjeta.ficha.titulo }}</div>
+        <div class="sa-acceso-pie">
+            Abrir <span class="sa-acceso-flecha">→</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endfor %}
+
+{% comment %}
+  Lo que ya tiene su propia pantalla no se duplica aquí: se enlaza. El
+  constructor de horarios entiende de recreos y de choques, y un CRUD genérico
+  solo lo empeoraría.
+{% endcomment %}
+<div class="sa-titulillo mt-5">Se maneja en su propia pantalla</div>
+<div class="card shadow-sm">
+    <div class="list-group list-group-flush">
+        <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+           href="{% url 'academico:horario_constructor' %}">
+            <span><strong>Armar horarios</strong><br>
+                <span class="small text-muted">Periodos, recreos y qué clase va en cada bloque.</span></span>
+            <span class="text-muted">→</span>
+        </a>
+        <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+           href="{% url 'noticias:lista' %}">
+            <span><strong>Noticias</strong><br>
+                <span class="small text-muted">Lo que se publica para el colegio o para un curso.</span></span>
+            <span class="text-muted">→</span>
+        </a>
+        <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+           href="{% url 'comunicaciones:lista_citaciones' %}">
+            <span><strong>Citaciones</strong><br>
+                <span class="small text-muted">Llamados a las familias, y en qué quedaron.</span></span>
+            <span class="text-muted">→</span>
+        </a>
+        <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+           href="{% url 'comunicaciones:buscar_boletines' %}">
+            <span><strong>Boletines de notas</strong><br>
+                <span class="small text-muted">El boletín de cada estudiante y el Excel por curso.</span></span>
+            <span class="text-muted">→</span>
+        </a>
+    </div>
+</div>
+
+{% endblock %}

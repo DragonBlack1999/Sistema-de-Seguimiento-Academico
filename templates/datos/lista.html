@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ ficha.titulo }}{% endblock %}
+{% block nav_datos %}activo{% endblock %}
+{% block contenido %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+        <h2 class="mb-1">{{ ficha.titulo }}</h2>
+        <p class="text-muted mb-0">{{ ficha.descripcion }}</p>
+    </div>
+    <a href="{% url 'datos:indice' %}" class="btn btn-outline-secondary">Volver a gestión de datos</a>
+</div>
+
+{% if ficha.tiene_buscador or desplegables %}
+<form method="get" class="mt-4">
+    {% if ficha.tiene_buscador %}
+    <div class="input-group input-group-lg shadow-sm">
+        <input type="search" name="q" class="form-control" value="{{ consulta }}"
+               placeholder="Buscar en {{ ficha.titulo|lower }}…" aria-label="Buscar en {{ ficha.titulo|lower }}">
+        <button class="btn btn-primary" type="submit">Buscar</button>
+        {% if hay_filtros_puestos %}
+        <a class="btn btn-outline-secondary" href="{% url 'datos:lista' ficha.clave %}">Limpiar</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if desplegables %}
+    <div class="d-flex flex-wrap gap-2 mt-2">
+        {% for d in desplegables %}
+        <select name="{{ d.clave }}" class="form-select form-select-sm" style="width:auto;"
+                aria-label="{{ d.rotulo }}" onchange="this.form.submit()">
+            <option value="">{{ d.rotulo }}: todos</option>
+            {% for valor, texto in d.opciones %}
+            <option value="{{ valor }}" {% if d.elegido == valor|stringformat:"s" %}selected{% endif %}>{{ texto }}</option>
+            {% endfor %}
+        </select>
+        {% endfor %}
+        {% if not ficha.tiene_buscador and hay_filtros_puestos %}
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'datos:lista' ficha.clave %}">Limpiar</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if ficha.ayuda_busqueda %}
+    <div class="form-text">{{ ficha.ayuda_busqueda }}</div>
+    {% endif %}
+</form>
+{% endif %}
+
+<table class="table table-striped bg-white shadow-sm mt-4 align-middle sa-tabla-apilada">
+    <thead>
+        <tr>
+            {% for columna in ficha.columnas %}<th>{{ columna.rotulo }}</th>{% endfor %}
+            {% if ficha.tiene_estado %}<th>Estado</th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for fila in filas %}
+        <tr{% if fila.de_baja %} class="text-muted"{% endif %}>
+            {% for celda in fila.celdas %}
+            <td {% if celda.principal %}data-principal{% else %}data-rotulo="{{ celda.rotulo }}"{% endif %}>{{ celda.valor }}</td>
+            {% endfor %}
+            {% if ficha.tiene_estado %}
+            <td data-rotulo="Estado">
+                {% if fila.de_baja %}
+                    <span class="badge bg-secondary">Dado de baja</span>
+                {% else %}
+                    <span class="badge bg-success">Activo</span>
+                {% endif %}
+            </td>
+            {% endif %}
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="{{ ficha.columnas|length|add:1 }}" class="text-center text-muted py-4">
+                {% if hay_filtros_puestos %}
+                    No se encontró nada con esa búsqueda.
+                    <a href="{% url 'datos:lista' ficha.clave %}">Ver todo</a>.
+                {% else %}
+                    Todavía no hay {{ ficha.titulo|lower }} cargados.
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% include 'datos/_paginacion.html' %}
+
+{% endblock %}

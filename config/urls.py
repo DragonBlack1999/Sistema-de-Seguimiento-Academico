@@ -31,6 +31,8 @@ urlpatterns = [
 
     path('admin/', admin.site.urls),
     path('', include('apps.accounts.urls')),
+    # La gestión de datos del colegio: el trabajo diario de la secretaría.
+    path('datos/', include('apps.datos.urls')),
     path('academico/', include('apps.academico.urls')),
     path('calificaciones/', include('apps.calificaciones.urls')),
     path('asistencia/', include('apps.asistencia.urls')),

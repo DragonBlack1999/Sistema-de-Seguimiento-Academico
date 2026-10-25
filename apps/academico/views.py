@@ -66,6 +66,24 @@ def _colorear_por_materia(horarios):
         horario.color = colores[materia_id]
 
 
+# Medido contra la hoja: con siete filas de clase y celdas de 62 px, el
+# tablero da 566 px de los ~610 que deja una A4 apaisada.
+ALTO_CELDA = 62
+FILAS_MEDIDAS = 7
+
+
+def _alto_de_celda(filas):
+    """Cuánto mide cada celda en papel, para que la hoja sea siempre una sola.
+
+    El alto no puede salir del texto: el apellido más largo del colegio no
+    puede ser lo que decida si el horario entra en una página o en dos. Se
+    fija aquí y se reparte: hoy son siete períodos y dan 62 px; si el colegio
+    agrega uno, dan 54, y la hoja sigue siendo una.
+    """
+    de_clase = sum(1 for fila in filas if not fila['es_recreo']) or FILAS_MEDIDAS
+    return max(30, min(ALTO_CELDA, round(ALTO_CELDA * FILAS_MEDIDAS / de_clase)))
+
+
 def _gestion_de(horarios):
     """El año escolar de un conjunto de clases, o nada si no es uno solo.
 
@@ -156,6 +174,9 @@ def mi_horario(request):
                     Periodo.objects.filter(curso=curso).order_by('orden'),
                 ),
             })
+
+    for tablero in tableros:
+        tablero['alto_celda'] = _alto_de_celda(tablero['filas'])
 
     return render(request, 'academico/mi_horario.html', {
         'tableros': tableros,

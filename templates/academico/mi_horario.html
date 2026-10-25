@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static horarios %}
 {% block titulo %}Horario{% endblock %}
 
 {% block contenido %}
@@ -58,33 +58,48 @@
   .c6 { background: #c3b1f0; } .c7 { background: #8fdcf5; }
 
   /* ───────────────────────── en papel ───────────────────────── */
-  .horario-membrete { display: none; }
+  .horario-membrete, .solo-papel { display: none; }
 
   @media print {
     /* Apaisado: seis días en vertical dejan columnas de 28 mm, donde
        «Ciencias Sociales» entra en cuatro renglones. */
-    @page { size: A4 landscape; margin: 10mm 8mm; }
+    @page { size: A4 landscape; margin: 8mm; }
 
     .horario-membrete {
-      display: flex; align-items: center; gap: 12px;
-      border-bottom: 2px solid #12324a; padding-bottom: 8px; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1.5px solid #12324a; padding-bottom: 5px; margin-bottom: 6px;
     }
-    .horario-membrete img { height: 56px; }
-    .horario-colegio { font-weight: 800; font-size: 1rem; line-height: 1.2; }
-    .horario-para { font-size: .9rem; }
-    .horario-fecha { margin-left: auto; text-align: right; font-size: .72rem; color: #4a6b7c; }
+    .horario-membrete img { height: 44px; }
+    .horario-colegio { font-weight: 800; font-size: .95rem; line-height: 1.15; }
+    .horario-para { font-size: .82rem; line-height: 1.15; }
+    .horario-fecha {
+      margin-left: auto; text-align: right; color: #4a6b7c;
+      font-size: .62rem; line-height: 1.3; white-space: nowrap;
+    }
 
     /* El tablero deja de ser una tarjeta de pantalla y pasa a ser la hoja. */
     .horario-tablero { background: #fff; border-radius: 0; padding: 0; }
     .horario-scroll { overflow: visible; }
     .horario-grilla {
-      min-width: 0; gap: 4px;
-      grid-template-columns: 78px repeat(6, 1fr);
+      min-width: 0; gap: 3px;
+      grid-template-columns: 56px repeat(6, 1fr);
     }
-    .horario-celda { min-height: 0; padding: 6px 7px; }
-    .horario-materia { font-size: .74rem; }
-    .horario-detalle { font-size: .64rem; }
-    .horario-dia, .horario-hora { font-size: .7rem; padding: 6px 4px; }
+    /* Alto fijo de celda, no «lo que ocupe el texto»: así la hoja mide
+       siempre lo mismo y no es el apellido más largo del colegio el que
+       decide si entra en una página. Las siete filas más el recreo suman
+       ~555 px de los ~610 que deja una A4 apaisada. */
+    .horario-celda { min-height: var(--alto-celda, 62px); padding: 4px 6px; border-radius: 8px; }
+    .horario-materia { font-size: .72rem; line-height: 1.1; }
+    /* Un solo renglón, pase lo que pase: el apellido más largo del colegio no
+       puede ser lo que decida si el horario entra en una hoja o en dos. */
+    .horario-detalle {
+      font-size: .62rem; line-height: 1.1; margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .horario-dia { font-size: .68rem; padding: 4px 4px; border-width: 1px; }
+    .horario-hora { font-size: .66rem; padding: 3px 2px; border-radius: 8px; }
+    .horario-recreo { font-size: .66rem; letter-spacing: .06em; min-height: 0; }
+    .solo-papel { display: inline; }
 
     /* Los colores SON la forma de leer este tablero de un vistazo. Sin esto el
        navegador los descarta al imprimir y queda una cuadrícula gris. */
@@ -94,7 +109,7 @@
 
     /* Una hoja por tablero: el administrador imprime los dieciocho cursos de
        una vez y cada curso sale en su página, listo para repartir. */
-    .horario-hoja { break-after: page; }
+    .horario-hoja { break-after: page; break-inside: avoid; }
     .horario-hoja:last-child { break-after: auto; }
     .horario-celda, .horario-hora, .horario-dia { break-inside: avoid; }
   }
@@ -114,7 +129,8 @@
 {% endif %}
 
 {% for tablero in tableros %}
-<div class="horario-hoja">
+{# El alto de celda lo calcula la vista: depende de cuántos períodos haya. #}
+<div class="horario-hoja" style="--alto-celda: {{ tablero.alto_celda }}px">
   {% comment %}
     El membrete solo existe en papel. Un horario pegado en la pared tiene que
     decir de qué colegio es, de quién y de qué año; en la pantalla todo eso ya
@@ -160,11 +176,16 @@
               {% for clase in celda.clases %}
                 <div class="horario-celda c{{ clase.color }}">
                   <div class="horario-materia">{{ clase.asignacion.materia }}</div>
+                  {% comment %}
+                    En pantalla, el nombre y el curso enteros. En papel, los
+                    cortos: son los que entran en un renglón, y cuarenta y dos
+                    celdas de tres renglones no caben en una hoja.
+                  {% endcomment %}
                   <div class="horario-detalle">
                     {% if tablero.mostrar_curso %}
-                      {{ clase.asignacion.curso }}
+                      <span class="d-print-none">{{ clase.asignacion.curso }}</span><span class="solo-papel">{{ clase.asignacion.curso|curso_corto }}</span>
                     {% else %}
-                      {{ clase.asignacion.profesor.get_full_name }}
+                      <span class="d-print-none">{{ clase.asignacion.profesor.get_full_name }}</span><span class="solo-papel">{{ clase.asignacion.profesor|docente_corto }}</span>
                     {% endif %}
                     {% if clase.aula %} · {{ clase.aula }}{% endif %}
                   </div>

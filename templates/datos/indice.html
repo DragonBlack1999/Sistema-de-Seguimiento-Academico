@@ -30,6 +30,16 @@
 <div class="card shadow-sm">
     <div class="list-group list-group-flush">
         <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+           href="{% url 'accounts:solicitudes_de_clave' %}">
+            <span><strong>Pedidos de contraseña</strong><br>
+                <span class="small text-muted">Quién no puede entrar, y devolverle la contraseña a su carnet.</span></span>
+            {% if claves_pendientes %}
+                <span class="badge bg-danger rounded-pill">{{ claves_pendientes }}</span>
+            {% else %}
+                <span class="text-muted">→</span>
+            {% endif %}
+        </a>
+        <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
            href="{% url 'academico:horario_constructor' %}">
             <span><strong>Armar horarios</strong><br>
                 <span class="small text-muted">Periodos, recreos y qué clase va en cada bloque.</span></span>

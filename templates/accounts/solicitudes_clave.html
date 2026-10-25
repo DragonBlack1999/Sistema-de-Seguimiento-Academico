@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block titulo %}Pedidos de contraseña{% endblock %}
+{% block contenido %}
+
+<h2 class="sa-saludo">Pedidos de contraseña</h2>
+<p class="sa-subsaludo">
+  Gente que no puede entrar al sistema. Al atender un pedido, su contraseña
+  vuelve a ser su carnet de identidad.
+</p>
+
+{% comment %}
+  Antes de apretar el botón hay que saber quién es la persona. El carnet está
+  en la carpeta de cada estudiante y en la libreta: si se restableciera sin
+  mirar, cualquiera que conozca el carnet de otro entraría con su cuenta.
+{% endcomment %}
+<div class="alert alert-light border small">
+  <strong>Antes de restablecer:</strong> asegúrate de que quien pide es quien dice
+  ser. Si no lo conoces, pídele que pase por secretaría con su carnet.
+</div>
+
+{% if pendientes %}
+  <div class="card shadow-sm mt-3">
+    <div class="list-group list-group-flush">
+      {% for solicitud in pendientes %}
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+              <strong>{{ solicitud.usuario.get_full_name|default:solicitud.usuario.username }}</strong>
+              <span class="badge bg-light text-secondary ms-1">{{ solicitud.usuario.get_rol_display }}</span>
+              <div class="small text-muted">
+                Usuario: <span class="font-monospace">{{ solicitud.usuario.username }}</span> ·
+                Pidió el {{ solicitud.fecha|date:"j \d\e F, H:i" }}
+                {% if solicitud.escrito|lower != solicitud.usuario.username|lower %}
+                  · escribió «{{ solicitud.escrito }}»
+                {% endif %}
+              </div>
+            </div>
+
+            <form method="post" action="{% url 'accounts:atender_solicitud' solicitud.pk %}"
+                  class="d-flex align-items-start gap-2 flex-wrap">
+              {% csrf_token %}
+              {% if solicitud.usuario.ci %}
+                <span class="text-muted small align-self-center">
+                  Pasará a ser <span class="font-monospace">{{ solicitud.usuario.ci }}</span>
+                </span>
+              {% else %}
+                {% comment %}
+                  Los 33 docentes y la dirección se cargaron antes de que el
+                  colegio entregara los carnets. Este es el único momento en que
+                  alguien tiene el documento delante: se escribe y queda guardado.
+                {% endcomment %}
+                <div>
+                  <input type="text" name="ci" class="form-control form-control-sm"
+                         placeholder="Su carnet de identidad" required style="width: 12rem;"
+                         aria-label="Carnet de identidad de {{ solicitud.usuario.get_full_name }}">
+                  <span class="d-block small text-muted">El colegio todavía no lo tiene.</span>
+                </div>
+              {% endif %}
+              <button type="submit" name="accion" value="restablecer" class="btn btn-sm btn-primary"
+                      onclick="return confirm('La contraseña de {{ solicitud.usuario.get_full_name|escapejs }} pasará a ser su carnet. ¿Seguro?');">
+                Restablecer
+              </button>
+              <button type="submit" name="accion" value="rechazar" class="btn btn-sm btn-outline-secondary">
+                Rechazar
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% else %}
+  <div class="card shadow-sm mt-3">
+    <div class="card-body text-center text-muted py-5">
+      Nadie está esperando. Todos pueden entrar.
+    </div>
+  </div>
+{% endif %}
+
+{% if atendidas %}
+  <div class="sa-titulillo mt-5">Lo último que se atendió</div>
+  <table class="table bg-white shadow-sm align-middle sa-tabla-apilada">
+    <thead>
+      <tr><th>Quién</th><th>En qué quedó</th><th>Quién lo atendió</th><th>Cuándo</th></tr>
+    </thead>
+    <tbody>
+      {% for solicitud in atendidas %}
+        <tr>
+          <td data-principal>{{ solicitud.usuario.get_full_name|default:solicitud.usuario.username }}</td>
+          <td data-rotulo="En qué quedó">
+            {% if solicitud.estado == 'ATENDIDA' %}
+              <span class="badge bg-success">{{ solicitud.get_estado_display }}</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ solicitud.get_estado_display }}</span>
+            {% endif %}
+          </td>
+          <td data-rotulo="Quién lo atendió" class="small">
+            {{ solicitud.atendida_por.get_full_name|default:"—" }}
+          </td>
+          <td data-rotulo="Cuándo" class="small">{{ solicitud.fecha_atendida|date:"j/n/Y H:i" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}

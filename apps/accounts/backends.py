@@ -11,6 +11,12 @@ class CarnetBackend(BaseBackend):
 
     Se resuelve primero al estudiante: si por datos heredados hubiera una
     ambigüedad, gana el dueño del username, nunca un tercero.
+
+    **El carnet abre la puerta solo mientras la persona no haya puesto una
+    contraseña suya.** En cuanto la pone, este camino deja de aceptarla y el
+    ingreso pasa por el camino normal. Sin esto, «cambiar mi contraseña» no
+    cambiaría nada para los estudiantes y los tutores: su carnet seguiría
+    entrando igual, y la pantalla estaría mintiendo.
     """
 
     def authenticate(self, request, username=None, password=None, **kwargs):
@@ -33,7 +39,7 @@ class CarnetBackend(BaseBackend):
             return None
 
         ci = (usuario.ci or '').strip().upper()
-        if ci and ci == clave:
+        if ci and ci == clave and not usuario.tiene_clave_propia():
             return usuario
         return None
 

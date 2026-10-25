@@ -88,6 +88,13 @@ a:hover { color: #14574f; }
 /* Si aun asi no cabe, la fila se parte sin amontonarse */
 .sa-nav .navbar-nav { row-gap: .15rem; }
 .sa-nav .dropdown-toggle::after { margin-left: .35rem; }
+/* El nombre de quien entro, que ahora es un menu: en una sola linea,
+   «Nelson Condori Quispe · Administrador» mide 299 px y, con los once enlaces
+   y la campanita, empuja la barra fuera de la pantalla. Se deja partir, igual
+   que se partia cuando era solo un texto. */
+.sa-nav .sa-usuario {
+  white-space: normal; max-width: 13rem; line-height: 1.2; text-align: right;
+}
 .sa-nav .navbar-toggler { border-color: var(--sa-borde); padding: .35rem .55rem; }
 .sa-nav .navbar-toggler:focus { box-shadow: 0 0 0 3px rgba(46,196,182,.35); }
 /* Pie de página: solo el nombre del colegio y el aviso de privacidad. Discreto

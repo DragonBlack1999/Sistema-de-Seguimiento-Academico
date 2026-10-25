@@ -42,6 +42,7 @@ class Notificacion(models.Model):
         ASISTENCIA = 'ASISTENCIA', 'Asistencia'
         NOTA = 'NOTA', 'Calificación'
         MENSAJE = 'MENSAJE', 'Mensaje'
+        CLAVE = 'CLAVE', 'Contraseña'
 
     class Nivel(models.TextChoices):
         """Cuánto corre cada aviso.

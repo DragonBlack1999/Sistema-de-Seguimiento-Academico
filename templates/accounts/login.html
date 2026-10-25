@@ -159,9 +159,14 @@
           <p class="sa-ayuda" id="ayudaUsuario">Está en tu libreta, arriba a la derecha.</p>
         </div>
         <div class="mb-4">
-          <label class="form-label" id="rotuloClave" for="{{ form.password.id_for_label }}">Tu carnet de identidad</label>
+          <label class="form-label" id="rotuloClave" for="{{ form.password.id_for_label }}">Tu contraseña</label>
           {{ form.password }}
-          <p class="sa-ayuda" id="ayudaClave">Solo los números, sin el complemento.</p>
+          {% comment %}
+            Ya no dice «tu carnet» a secas: desde que cualquiera puede poner una
+            contraseña suya, el carnet deja de servirle en cuanto lo hace, y el
+            rótulo estaría mintiéndole justo a quien la cambió.
+          {% endcomment %}
+          <p class="sa-ayuda" id="ayudaClave">Tu carnet, o la que hayas puesto tú.</p>
         </div>
         <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
           Ingresar
@@ -171,6 +176,10 @@
           </svg>
         </button>
       </form>
+
+      <p class="sa-ayuda text-center mt-3">
+        <a href="{% url 'accounts:olvide_clave' %}">¿Olvidaste tu contraseña?</a>
+      </p>
 
       <p class="sa-ayuda text-center mt-3">
         Qué datos guarda el colegio aquí y quién los ve:
@@ -210,14 +219,14 @@ document.addEventListener('DOMContentLoaded', function () {
     estudiante: {
       usuario: 'Tu RUDE',
       ayudaUsuario: 'Está en tu libreta, arriba a la derecha.',
-      clave: 'Tu carnet de identidad',
-      ayudaClave: 'Solo los números, sin el complemento.',
+      clave: 'Tu contraseña',
+      ayudaClave: 'Tu carnet, o la que hayas puesto tú.',
     },
     padre: {
       usuario: 'Tu carnet de identidad',
       ayudaUsuario: 'El tuyo, no el de tu hijo.',
-      clave: 'Tu carnet de identidad otra vez',
-      ayudaClave: 'El mismo número en los dos campos.',
+      clave: 'Tu contraseña',
+      ayudaClave: 'El mismo carnet, o la que hayas puesto tú.',
     },
     docente: {
       usuario: 'Tu nombre y apellido juntos',

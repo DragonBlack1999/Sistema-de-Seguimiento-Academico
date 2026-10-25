@@ -143,13 +143,26 @@
                                 <li><a class="dropdown-item" href="{% url 'comunicaciones:buscar_boletines' %}">Boletines de notas</a></li>
                                 <li><a class="dropdown-item" href="{% url 'noticias:crear' %}">Publicar noticia</a></li>
                                 <li><a class="dropdown-item" href="{% url 'academico:horario_constructor' %}">Armar horarios</a></li>
+                                <li><a class="dropdown-item" href="{% url 'accounts:solicitudes_de_clave' %}">Pedidos de contraseña</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="/admin/">Gestionar datos</a></li>
                             </ul>
                         </li>
                     {% endif %}
                 </ul>
-                <span class="navbar-text me-3">{{ user.get_full_name|default:user.username }} · {{ user.get_rol_display }}</span>
+                {% comment %}
+                  El nombre pasa a ser un menú: es donde la gente busca lo suyo,
+                  y «cambiar mi contraseña» no tiene otro sitio natural en una
+                  barra que ya tiene once enlaces.
+                {% endcomment %}
+                <li class="nav-item dropdown list-unstyled me-2">
+                    <a class="nav-link dropdown-toggle sa-usuario" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ user.get_full_name|default:user.username }} · {{ user.get_rol_display }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{% url 'accounts:cambiar_clave' %}">Cambiar mi contraseña</a></li>
+                    </ul>
+                </li>
                 <form method="post" action="{% url 'accounts:logout' %}" class="d-flex">
                     {% csrf_token %}
                     <button class="btn btn-sm btn-outline-secondary" type="submit">Salir</button>

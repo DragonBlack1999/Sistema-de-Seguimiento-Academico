@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block titulo %}Olvidé mi contraseña{% endblock %}
+{% block contenido %}
+
+<h2>Olvidé mi contraseña</h2>
+
+{% if enviado %}
+  {% comment %}
+    El mismo texto exista o no esa cuenta. Si dijera «ese usuario no existe»,
+    esta pantalla sería una forma cómoda de averiguar quién tiene cuenta en el
+    colegio.
+  {% endcomment %}
+  <div class="card shadow-sm mt-3" style="max-width: 560px;">
+    <div class="card-body">
+      <div class="h5">Tu pedido quedó anotado</div>
+      <p class="mb-2">
+        La secretaría lo va a ver. Cuando lo atienda, tu contraseña vuelve a ser
+        <strong>tu carnet de identidad</strong> y podrás entrar con él.
+      </p>
+      <p class="text-muted small mb-3">
+        No se hace solo a propósito: el carnet no es un secreto, así que alguien
+        del colegio tiene que confirmar que eres tú quien lo pide. Si hace falta
+        apurarlo, pasa por secretaría.
+      </p>
+      <a href="{% url 'accounts:login' %}" class="btn btn-primary">Volver a entrar</a>
+    </div>
+  </div>
+{% else %}
+  <p class="text-muted">
+    Escribe lo mismo con lo que entras al sistema. La secretaría recibe el pedido
+    y te devuelve la contraseña a tu carnet de identidad.
+  </p>
+
+  <div class="card shadow-sm mt-3" style="max-width: 560px;">
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary">Pedir mi contraseña</button>
+          <a href="{% url 'accounts:login' %}" class="btn btn-outline-secondary">Volver</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

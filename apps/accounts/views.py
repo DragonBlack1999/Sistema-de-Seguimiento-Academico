@@ -1,12 +1,19 @@
+from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.http import HttpResponseForbidden
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
-from . import resumenes, tablero
-from .forms import LoginForm
-from .models import Usuario
+from . import claves, resumenes, tablero
+from .forms import CambiarClaveForm, CarnetForm, LoginForm, OlvideClaveForm
+from .models import SolicitudDeClave, Usuario
+
+MENSAJE_SOLO_SECRETARIA = (
+    'Solo la dirección o la secretaría pueden atender los pedidos de contraseña.'
+)
 
 
 class AccountsLoginView(LoginView):
@@ -163,3 +170,95 @@ def tablero_direccion(request):
         'asistencia': tablero.asistencia_por_dia(gestion),
         'pendientes': tablero.pendientes(gestion),
     })
+
+
+# ───────────────────────────── contraseñas ─────────────────────────────
+
+@login_required
+def cambiar_clave(request):
+    """Cualquiera que ya entró puede poner una contraseña suya."""
+    if request.method == 'POST':
+        form = CambiarClaveForm(request.user, request.POST)
+        if form.is_valid():
+            form.save()
+            # Sin esto, cambiar la contraseña cierra la propia sesión: Django
+            # guarda su huella en la cookie y deja de coincidir.
+            update_session_auth_hash(request, form.user)
+            messages.success(request, 'Listo: tu contraseña cambió.')
+            return redirect('accounts:redirigir_dashboard')
+    else:
+        form = CambiarClaveForm(request.user)
+
+    return render(request, 'accounts/cambiar_clave.html', {
+        'form': form,
+        # Mientras no tenga una suya, entra con su carnet: conviene decírselo
+        # en la misma pantalla, porque es lo que va a escribir arriba.
+        'entra_con_carnet': not request.user.tiene_clave_propia(),
+    })
+
+
+def olvide_clave(request):
+    """El pedido que llega a la secretaría. Abierto: quien lo usa no pudo entrar."""
+    enviado = False
+    if request.method == 'POST':
+        form = OlvideClaveForm(request.POST)
+        if form.is_valid():
+            claves.pedir_restablecimiento(form.cleaned_data['escrito'])
+            # La respuesta es la misma exista o no esa cuenta. Si dijera «ese
+            # usuario no existe», esta pantalla sería una forma cómoda de
+            # averiguar quién tiene cuenta en el colegio.
+            enviado = True
+            form = OlvideClaveForm()
+    else:
+        form = OlvideClaveForm()
+
+    return render(request, 'accounts/olvide_clave.html', {'form': form, 'enviado': enviado})
+
+
+@login_required
+def solicitudes_de_clave(request):
+    """La bandeja de la secretaría."""
+    if not request.user.es_admin():
+        return HttpResponseForbidden(MENSAJE_SOLO_SECRETARIA)
+
+    atendidas = SolicitudDeClave.objects.exclude(
+        estado=SolicitudDeClave.Estado.PENDIENTE,
+    ).select_related('usuario', 'atendida_por')[:20]
+
+    return render(request, 'accounts/solicitudes_clave.html', {
+        'pendientes': claves.pendientes(),
+        'atendidas': atendidas,
+        'carnet': CarnetForm(),
+    })
+
+
+@login_required
+@require_POST
+def atender_solicitud(request, solicitud_id):
+    """Restablecer al carnet, o rechazar el pedido."""
+    if not request.user.es_admin():
+        return HttpResponseForbidden(MENSAJE_SOLO_SECRETARIA)
+
+    solicitud = get_object_or_404(
+        SolicitudDeClave.objects.select_related('usuario'),
+        pk=solicitud_id, estado=SolicitudDeClave.Estado.PENDIENTE,
+    )
+    quien = solicitud.usuario.get_full_name() or solicitud.usuario.username
+
+    if request.POST.get('accion') == 'rechazar':
+        solicitud.cerrar(SolicitudDeClave.Estado.RECHAZADA, request.user)
+        messages.info(request, f'El pedido de {quien} queda rechazado. Su contraseña no cambió.')
+        return redirect('accounts:solicitudes_de_clave')
+
+    try:
+        claves.restablecer(solicitud, por=request.user, ci=request.POST.get('ci', ''))
+    except ValueError as error:
+        messages.error(request, f'{quien}: {error}')
+        return redirect('accounts:solicitudes_de_clave')
+
+    messages.success(
+        request,
+        f'La contraseña de {quien} vuelve a ser su carnet de identidad. '
+        f'Dile que entre con él y la cambie por una suya.',
+    )
+    return redirect('accounts:solicitudes_de_clave')

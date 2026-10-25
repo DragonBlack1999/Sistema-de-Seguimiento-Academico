@@ -34,7 +34,12 @@ def indice(request):
         (grupo, [{'ficha': f, 'cuantos': f.cuantos()} for f in lista])
         for grupo, lista in fichas.por_grupos()
     ]
-    return render(request, 'datos/indice.html', {'grupos': grupos})
+    from apps.accounts.claves import pendientes
+
+    return render(request, 'datos/indice.html', {
+        'grupos': grupos,
+        'claves_pendientes': pendientes().count(),
+    })
 
 
 @login_required

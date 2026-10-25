@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block titulo %}Cambiar mi contraseña{% endblock %}
+{% block contenido %}
+
+<h2>Cambiar mi contraseña</h2>
+
+{% if entra_con_carnet %}
+  {% comment %}
+    Mientras no haya puesto una suya, entra con su carnet. Decirlo aquí evita
+    la pregunta «¿cuál es mi contraseña de ahora?», que es justo el campo que
+    tiene delante.
+  {% endcomment %}
+  <p class="text-muted">
+    Ahora entras con tu carnet de identidad. Esa es «tu contraseña de ahora».
+    En cuanto pongas una tuya, el carnet deja de servir para entrar.
+  </p>
+{% endif %}
+
+<div class="card shadow-sm mt-3" style="max-width: 560px;">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      {{ form|crispy }}
+      <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Cambiar</button>
+        <a href="{% url 'accounts:redirigir_dashboard' %}" class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

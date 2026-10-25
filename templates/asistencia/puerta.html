@@ -13,7 +13,11 @@
 <style>
   .puerta-fila { transition: background-color .25s ease; }
   .puerta-fila.recien-marcado { background-color: #d1e7dd !important; }
-  .puerta-buscador { position: sticky; top: 0; z-index: 5; background: #f8f9fa; padding: 12px 0; }
+  /* Ya no se queda pegado arriba. Se pegó cuando era una línea y la lista
+     tenía cuatrocientas filas; ahora son los cursos enteros —en un celular,
+     457 de los 812 píxeles de la pantalla— y la lista de un curso cabe en
+     dos pantallas. Pegarlo dejaría sitio para tres estudiantes. */
+  .puerta-buscador { background: #f8f9fa; padding: 12px 0; }
 
   /* El desplazamiento de la fila al pasar el mouse creaba un contexto de
      apilado que encerraba el menú de estados: los botones de las filas de
@@ -24,6 +28,11 @@
      una sola clase, y ganaba en silencio. */
   .puerta-fila:hover { transform: none !important; }
   .puerta-fila .dropdown-menu { z-index: 1080; }
+
+  /* El grado, con ancho fijo: así los paralelos de todas las filas quedan
+     alineados en columna y la fila de botones se lee como una grilla. */
+  .puerta-grado { display: inline-block; min-width: 2.5rem; font-weight: 600; }
+  .puerta-buscador .btn-check + .btn { min-width: 4.5rem; }
 </style>
 
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
@@ -63,15 +72,47 @@
 </div>
 
 <div class="puerta-buscador mt-3">
-  <form method="get" class="input-group input-group-lg shadow-sm" data-busqueda-viva="#tabla">
+  <form method="get" id="formPuerta" data-busqueda-viva="#tabla">
     <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
-    <input type="search" name="q" value="{{ consulta }}" autofocus class="form-control"
-           placeholder="Escribe el nombre, apellido o RUDE del estudiante que entra"
-           aria-label="Buscar estudiante">
-    <button class="btn btn-primary" type="submit">Buscar</button>
-    {% if consulta %}
-      <a class="btn btn-outline-secondary" href="{% url 'asistencia:puerta' %}?fecha={{ fecha|date:'Y-m-d' }}">Ver todos</a>
-    {% endif %}
+
+    <p class="mb-1 small text-muted">¿De qué curso es el estudiante que está entrando?</p>
+    {% for grupo in grupos %}
+      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+        <span class="puerta-grado text-muted">{{ grupo.rotulo }}</span>
+        {% for c in grupo.cursos %}
+          <input type="radio" class="btn-check" name="curso" value="{{ c.curso.pk }}"
+                 id="curso{{ c.curso.pk }}" autocomplete="off"
+                 {% if elegido == c.curso.pk|stringformat:'s' %}checked{% endif %}>
+          <label class="btn btn-outline-primary" for="curso{{ c.curso.pk }}"
+                 title="{{ c.curso }} · {{ c.total }} estudiantes">
+            {{ c.curso.paralelo }}
+            {% if c.pendientes %}
+              <span class="badge bg-secondary ms-1 chip-pendientes"
+                    data-curso="{{ c.curso.pk }}" data-pendientes="{{ c.pendientes }}">{{ c.pendientes }}</span>
+            {% else %}
+              <span class="badge bg-success ms-1 chip-pendientes"
+                    data-curso="{{ c.curso.pk }}" data-pendientes="0">✓</span>
+            {% endif %}
+          </label>
+        {% endfor %}
+      </div>
+    {% endfor %}
+    <div class="mb-2">
+      <input type="radio" class="btn-check" name="curso" value="todos" id="cursoTodos"
+             autocomplete="off" {% if elegido == 'todos' %}checked{% endif %}>
+      <label class="btn btn-sm btn-outline-secondary" for="cursoTodos">Ver el colegio entero</label>
+      <span class="small text-muted ms-1">El número de cada botón es la gente que todavía no entró.</span>
+    </div>
+
+    <div class="input-group input-group-lg shadow-sm">
+      <input type="search" name="q" value="{{ consulta }}" class="form-control"
+             placeholder="¿No está en su curso? Búscalo por nombre, apellido o RUDE"
+             aria-label="Buscar estudiante">
+      <button class="btn btn-primary" type="submit">Buscar</button>
+      {% if consulta %}
+        <a class="btn btn-outline-secondary" href="{% url 'asistencia:puerta' %}?fecha={{ fecha|date:'Y-m-d' }}">Limpiar</a>
+      {% endif %}
+    </div>
   </form>
 </div>
 
@@ -95,6 +136,35 @@
   const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
   const fecha = "{{ fecha|date:'Y-m-d' }}";
   const pendientes = document.getElementById('contadorPendientes');
+  const formulario = document.getElementById('formPuerta');
+  const campoBusqueda = formulario.querySelector('input[type="search"]');
+
+  /* Elegir un curso y buscar son dos caminos al mismo estudiante. Si se usan a
+     la vez, la pantalla diría una cosa (el curso marcado) y mostraría otra (el
+     resultado de la búsqueda, que mira en todos los cursos). Usar uno limpia
+     el otro. */
+  // Los dos van en captura, sobre el formulario: así corren ANTES que el oyente
+  // que el buscador en vivo engancha en cada campo, que es quien arma la
+  // dirección a pedir. Al revés, la petición se llevaría lo que acaba de
+  // dejar de valer —un curso recién elegido viajando con la búsqueda vieja— y
+  // la pantalla mostraría una cosa con la otra marcada.
+  formulario.addEventListener('change', function (evento) {
+    if (evento.target.name === 'curso') campoBusqueda.value = '';
+  }, true);
+  formulario.addEventListener('input', function (evento) {
+    if (evento.target !== campoBusqueda) return;
+    formulario.querySelectorAll('input[name="curso"]:checked')
+      .forEach(function (boton) { boton.checked = false; });
+  }, true);
+
+  /* El número del botón del curso: lo que todavía no entró. Al marcar a uno hay
+     que descontarlo ahí también, o el tablero de arriba se queda mintiendo
+     hasta la próxima recarga. */
+  function pintarCurso(chip, cuantos) {
+    chip.dataset.pendientes = cuantos;
+    chip.textContent = cuantos > 0 ? cuantos : '\u2713';
+    chip.className = 'badge ms-1 chip-pendientes ' + (cuantos > 0 ? 'bg-secondary' : 'bg-success');
+  }
 
   const CLASES = {
     PRESENTE: 'badge bg-success',
@@ -132,6 +202,9 @@
 
       if (eraNuevo && pendientes) {
         pendientes.textContent = Math.max(0, parseInt(pendientes.textContent, 10) - 1);
+        const chip = document.querySelector(
+          '.chip-pendientes[data-curso="' + fila.dataset.curso + '"]');
+        if (chip) pintarCurso(chip, Math.max(0, parseInt(chip.dataset.pendientes, 10) - 1));
       }
       if (datos.aviso) alert(datos.aviso);
     } catch (error) {

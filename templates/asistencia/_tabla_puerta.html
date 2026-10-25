@@ -1,9 +1,27 @@
 {% comment %}
-  La tabla de la puerta, sola: es lo que vuelve del servidor mientras alguien
-  escribe en el buscador. Los botones no enganchan nada aquí; de eso se ocupa
-  un único oyente en el contenedor, que sigue vivo cuando estas filas cambian.
+  La lista de la puerta, sola: es lo que vuelve del servidor al elegir un curso
+  o al escribir en el buscador. Los botones no enganchan nada aquí; de eso se
+  ocupa un único oyente en el contenedor, que sigue vivo cuando estas filas
+  cambian.
 {% endcomment %}
-<table class="table bg-white shadow-sm mt-3 align-middle">
+{% if sin_eleccion %}
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-body text-center text-muted py-5">
+      <div class="h5 mb-2">Elige arriba el curso del estudiante que está entrando</div>
+      <p class="mb-0">Si no aparece en su curso, búscalo por nombre, apellido o RUDE.</p>
+    </div>
+  </div>
+{% else %}
+<p class="small text-muted mb-1 mt-3">
+  {{ filas|length }} estudiante{{ filas|length|pluralize }} en pantalla
+</p>
+{% comment %}
+  `sa-tabla-apilada`: en el celular cada fila pasa a ser una tarjeta. Sin
+  eso la tabla mide 928 píxeles en una pantalla de 375 y hay que
+  arrastrarla de lado para llegar a «Marcar entrada», que es el único
+  botón que importa en esta pantalla.
+{% endcomment %}
+<table class="table bg-white shadow-sm align-middle sa-tabla-apilada">
   <thead>
     <tr>
       <th>Estudiante</th>
@@ -15,13 +33,14 @@
   </thead>
   <tbody>
   {% for fila in filas %}
-    <tr class="puerta-fila" data-estudiante="{{ fila.matricula.estudiante.pk }}">
-      <td>
+    <tr class="puerta-fila" data-estudiante="{{ fila.matricula.estudiante.pk }}"
+        data-curso="{{ fila.matricula.curso_id }}">
+      <td data-principal>
         {{ fila.matricula.estudiante.usuario.get_full_name }}
         <span class="d-block small text-muted font-monospace">{{ fila.matricula.estudiante.rude }}</span>
       </td>
-      <td class="small">{{ fila.matricula.curso }}</td>
-      <td class="text-center celda-estado">
+      <td class="small" data-rotulo="Curso">{{ fila.matricula.curso }}</td>
+      <td class="text-center celda-estado" data-rotulo="Estado">
         {% if fila.asistencia %}
           {% if fila.asistencia.estado == 'PRESENTE' %}<span class="badge bg-success">
           {% elif fila.asistencia.estado == 'ATRASO' %}<span class="badge bg-warning text-dark">
@@ -32,10 +51,10 @@
           <span class="badge bg-light text-secondary">Sin registrar</span>
         {% endif %}
       </td>
-      <td class="text-center celda-hora font-monospace">
+      <td class="text-center celda-hora font-monospace" data-rotulo="Hora">
         {{ fila.asistencia.hora_llegada|time:"H:i"|default:"—" }}
       </td>
-      <td class="text-end">
+      <td class="text-end" data-rotulo="Registrar">
         <button type="button" class="btn btn-sm btn-success btn-entrada">Marcar entrada</button>
         <div class="btn-group btn-group-sm ms-1">
           <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -53,10 +72,17 @@
     <tr><td colspan="5" class="text-center text-muted py-4">
       {% if consulta %}
         No se encontró ningún estudiante para <strong>{{ consulta }}</strong>.
+        {% comment %}
+          El buscador mira en todos los cursos del día, así que si no está aquí
+          es que no pasa por la puerta hoy: conviene decirlo en vez de dejar la
+          tabla muda.
+        {% endcomment %}
+        <span class="d-block small">Hoy no pasa por la puerta nadie con ese nombre.</span>
       {% else %}
-        No hay estudiantes con matrícula activa en esta gestión.
+        Este curso no tiene estudiantes con matrícula activa.
       {% endif %}
     </td></tr>
   {% endfor %}
   </tbody>
 </table>
+{% endif %}

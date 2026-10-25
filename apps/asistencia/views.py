@@ -27,6 +27,11 @@ from .services import (
 
 MENSAJE_SOLO_REGENTE = 'Solo el regente o un administrador pueden registrar la asistencia.'
 
+# Valor del botón que pide la lista entera del día. Tiene que ser un texto y no
+# una cadena vacía: el buscador en vivo descarta los parámetros vacíos, y sin
+# valor «Todos» se confundiría con «todavía no elegí nada».
+TODOS = 'todos'
+
 
 def _puede_registrar(user):
     return user.es_regente() or user.es_admin()
@@ -44,9 +49,48 @@ def _fecha_pedida(request):
 
 # --------------------------------------------------------------- puerta (regente)
 
+def _botones_de_curso(matriculas, registros):
+    """Los cursos del día agrupados por grado, con lo que le falta a cada uno.
+
+    El número del botón es lo que convierte la fila de cursos en un tablero: el
+    regente ve de un vistazo qué cursos ya entraron enteros y a cuáles les
+    falta gente, sin abrir ninguna lista.
+    """
+    por_curso = {}
+    for matricula in matriculas:
+        datos = por_curso.setdefault(str(matricula.curso_id), {
+            'curso': matricula.curso, 'total': 0, 'pendientes': 0,
+        })
+        datos['total'] += 1
+        if matricula.estudiante_id not in registros:
+            datos['pendientes'] += 1
+
+    # El nivel solo se nombra si ese día hay más de uno: en un colegio de puro
+    # secundario, repetirlo dieciocho veces es ruido.
+    varios = len({d['curso'].nivel for d in por_curso.values()}) > 1
+
+    grupos = []
+    for datos in por_curso.values():
+        curso = datos['curso']
+        rotulo = (f'{curso.grado}° de {curso.get_nivel_display()}'
+                  if varios else f'{curso.grado}°')
+        # Las matrículas vienen ordenadas por nivel, grado y paralelo, así que
+        # los de un mismo grado llegan seguidos y basta con mirar el anterior.
+        if not grupos or grupos[-1]['rotulo'] != rotulo:
+            grupos.append({'rotulo': rotulo, 'cursos': []})
+        grupos[-1]['cursos'].append(datos)
+
+    return grupos, por_curso
+
+
 @login_required
 def puerta(request):
-    """Pantalla de la puerta: la lista del día con buscador."""
+    """Pantalla de la puerta: se elige el curso y entra su lista.
+
+    No se abre con los cuatrocientos estudiantes del día encima: el regente
+    toca el curso del que está entrando y ve sus veintitantos. El buscador, que
+    mira en todos los cursos, es para cuando el estudiante no aparece ahí.
+    """
     if not _puede_registrar(request.user):
         return HttpResponseForbidden(MENSAJE_SOLO_REGENTE)
 
@@ -56,27 +100,40 @@ def puerta(request):
 
     fecha = _fecha_pedida(request)
     consulta = request.GET.get('q', '').strip()
+    pedido = request.GET.get('curso', '').strip()
 
-    matriculas = matriculas_del_dia(gestion, fecha)
-    if consulta:
-        permitidos = set(
-            buscar_estudiantes(consulta).values_list('pk', flat=True)
-        )
-        matriculas = [m for m in matriculas if m.estudiante_id in permitidos]
-    else:
-        matriculas = list(matriculas)
-
+    matriculas = list(matriculas_del_dia(gestion, fecha))
     registros = {
         a.estudiante_id: a
         for a in Asistencia.objects.filter(fecha=fecha)
     }
 
+    grupos, por_curso = _botones_de_curso(matriculas, registros)
+    # Un curso que no existe (una dirección vieja, un curso que hoy está en
+    # capacitación) se trata como si no se hubiera elegido nada.
+    elegido = pedido if pedido == TODOS or pedido in por_curso else ''
+
+    if consulta:
+        # Buscar gana sobre el curso elegido: se busca justamente cuando el
+        # estudiante no está donde se lo esperaba, así que mirar solo dentro de
+        # un curso no encontraría nunca lo que se está buscando.
+        permitidos = set(
+            buscar_estudiantes(consulta).values_list('pk', flat=True)
+        )
+        mostradas = [m for m in matriculas if m.estudiante_id in permitidos]
+    elif elegido == TODOS:
+        mostradas = matriculas
+    elif elegido:
+        mostradas = [m for m in matriculas if str(m.curso_id) == elegido]
+    else:
+        mostradas = []
+
     filas = [
         {'matricula': m, 'asistencia': registros.get(m.estudiante_id)}
-        for m in matriculas
+        for m in mostradas
     ]
 
-    total = matriculas_del_dia(gestion, fecha).count()
+    total = len(matriculas)
     presentes = sum(1 for a in registros.values() if a.estado == Asistencia.Estado.PRESENTE)
     atrasos = sum(1 for a in registros.values() if a.estado == Asistencia.Estado.ATRASO)
     faltas = sum(1 for a in registros.values() if a.estado == Asistencia.Estado.FALTA)
@@ -92,6 +149,9 @@ def puerta(request):
         'fecha': fecha,
         'consulta': consulta,
         'filas': filas,
+        'grupos': grupos,
+        'elegido': elegido,
+        'sin_eleccion': not consulta and not elegido,
         'estados': Asistencia.Estado.choices,
         'hora_limite': hora_limite(),
         'en_capacitacion': list(cursos_en_capacitacion(fecha)),

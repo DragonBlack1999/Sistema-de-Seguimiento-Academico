@@ -113,6 +113,12 @@
       campo.removeAttribute('onchange');
       campo.addEventListener('change', pedir);
     });
+    /* Los botones de opción (los cursos de la puerta) son una elección, no algo
+       que se escriba: se piden al instante, sin la espera del tecleo. */
+    formulario.querySelectorAll('input[type="radio"], input[type="checkbox"]')
+      .forEach(function (campo) {
+        campo.addEventListener('change', pedir);
+      });
 
     enganchar();
   }

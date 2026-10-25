@@ -1,5 +1,6 @@
 {% if messages %}
     {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {# Un aviso de «se guardó correctamente» no tiene por qué salir en papel. #}
+        <div class="alert alert-{{ message.tags }} d-print-none">{{ message }}</div>
     {% endfor %}
 {% endif %}

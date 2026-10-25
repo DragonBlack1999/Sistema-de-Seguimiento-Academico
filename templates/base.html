@@ -21,7 +21,11 @@
 </head>
 <body>
     {% if user.is_authenticated %}
-    <nav class="navbar navbar-expand-lg sa-nav sticky-top">
+    {% comment %}
+      `d-print-none`: en papel, once enlaces y un botón de salir no son
+      nada; lo que se imprime es el contenido, no la pantalla.
+    {% endcomment %}
+    <nav class="navbar navbar-expand-lg sa-nav sticky-top d-print-none">
         <div class="container-fluid">
             {% comment %}
               Solo el escudo y el nombre: con once enlaces, añadir "Nivel Secundario"
@@ -173,7 +177,7 @@
       botón, y el diseño ocupa el alto exacto de la pantalla.
     {% endcomment %}
     {% block pie %}
-    <footer class="sa-pie py-3">
+    <footer class="sa-pie py-3 d-print-none">
         <div class="container text-center small text-muted">
             U.E. «Eduardo Abaroa Tarde» · Nivel Secundario ·
             <a href="{% url 'privacidad' %}">Aviso de privacidad</a>

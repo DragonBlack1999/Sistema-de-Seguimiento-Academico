@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block titulo %}Horario{% endblock %}
 
 {% block contenido %}
@@ -55,11 +56,86 @@
   .c2 { background: #f77fb7; } .c3 { background: #a8a4ff; }
   .c4 { background: #6fd7a8; } .c5 { background: #ffc978; }
   .c6 { background: #c3b1f0; } .c7 { background: #8fdcf5; }
+
+  /* ───────────────────────── en papel ───────────────────────── */
+  .horario-membrete { display: none; }
+
+  @media print {
+    /* Apaisado: seis días en vertical dejan columnas de 28 mm, donde
+       «Ciencias Sociales» entra en cuatro renglones. */
+    @page { size: A4 landscape; margin: 10mm 8mm; }
+
+    .horario-membrete {
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 2px solid #12324a; padding-bottom: 8px; margin-bottom: 10px;
+    }
+    .horario-membrete img { height: 56px; }
+    .horario-colegio { font-weight: 800; font-size: 1rem; line-height: 1.2; }
+    .horario-para { font-size: .9rem; }
+    .horario-fecha { margin-left: auto; text-align: right; font-size: .72rem; color: #4a6b7c; }
+
+    /* El tablero deja de ser una tarjeta de pantalla y pasa a ser la hoja. */
+    .horario-tablero { background: #fff; border-radius: 0; padding: 0; }
+    .horario-scroll { overflow: visible; }
+    .horario-grilla {
+      min-width: 0; gap: 4px;
+      grid-template-columns: 78px repeat(6, 1fr);
+    }
+    .horario-celda { min-height: 0; padding: 6px 7px; }
+    .horario-materia { font-size: .74rem; }
+    .horario-detalle { font-size: .64rem; }
+    .horario-dia, .horario-hora { font-size: .7rem; padding: 6px 4px; }
+
+    /* Los colores SON la forma de leer este tablero de un vistazo. Sin esto el
+       navegador los descarta al imprimir y queda una cuadrícula gris. */
+    .horario-tablero, .horario-tablero * {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+
+    /* Una hoja por tablero: el administrador imprime los dieciocho cursos de
+       una vez y cada curso sale en su página, listo para repartir. */
+    .horario-hoja { break-after: page; }
+    .horario-hoja:last-child { break-after: auto; }
+    .horario-celda, .horario-hora, .horario-dia { break-inside: avoid; }
+  }
 </style>
 
-<h2>Horario</h2>
+{# En papel el membrete ya dice qué es la hoja; este título sobra. #}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 d-print-none">
+  <h2 class="mb-0">Horario</h2>
+  {% if tableros %}
+    <button type="button" class="btn btn-outline-primary d-print-none" onclick="window.print()">
+      Imprimir{% if tableros|length > 1 %} los {{ tableros|length }} horarios{% endif %}
+    </button>
+  {% endif %}
+</div>
+{% if tableros|length > 1 %}
+  <p class="small text-muted mb-0 d-print-none">Cada curso sale en su propia hoja.</p>
+{% endif %}
+
 {% for tablero in tableros %}
-  <div class="d-flex align-items-baseline gap-2 mt-4">
+<div class="horario-hoja">
+  {% comment %}
+    El membrete solo existe en papel. Un horario pegado en la pared tiene que
+    decir de qué colegio es, de quién y de qué año; en la pantalla todo eso ya
+    está en la barra de arriba y repetirlo sería ruido.
+  {% endcomment %}
+  <div class="horario-membrete">
+    <img src="{% static 'img/escudo-impreso.png' %}" alt="">
+    <div>
+      <div class="horario-colegio">Unidad Educativa «Eduardo Abaroa Tarde»</div>
+      <div class="horario-para">
+        Horario de <strong>{{ tablero.para|default:tablero.titulo }}</strong>
+        {% if tablero.pie %} · {{ tablero.pie }}{% endif %}
+      </div>
+    </div>
+    <div class="horario-fecha">
+      Nivel Secundario{% if tablero.gestion %}<br>Gestión {{ tablero.gestion.anio }}{% endif %}
+      <br>Impreso el {% now "j/n/Y" %}
+    </div>
+  </div>
+
+  <div class="d-flex align-items-baseline gap-2 mt-4 d-print-none">
     <h5 class="mb-0">{{ tablero.titulo }}</h5>
     {% if tablero.subtitulo %}<span class="text-muted small">{{ tablero.subtitulo }}</span>{% endif %}
   </div>
@@ -103,6 +179,7 @@
       </div>
     </div>
   </div>
+</div>
 {% empty %}
   <div class="alert alert-light border mt-3">No hay horario registrado todavía.</div>
 {% endfor %}

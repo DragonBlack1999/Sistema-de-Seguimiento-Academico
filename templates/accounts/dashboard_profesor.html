@@ -5,44 +5,113 @@
 
 <h2 class="sa-saludo">Hola, {{ user.get_full_name|default:user.username }}</h2>
 <p class="sa-subsaludo">
-  {% if materias %}{{ materias|join:" · " }} · {% endif %}{{ asignaciones|length }} curso{{ asignaciones|length|pluralize }} a tu cargo
+  {{ hoy|date:"l j \d\e F"|capfirst }}
+  {% if materias %} · {{ materias|join:" · " }}{% endif %}
 </p>
 
-{% if por_calificar %}
-<div class="sa-resumen mt-3">
-  <div class="sa-aviso">
-    <span class="sa-aviso-icono" style="background:#fdf0e0;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c47f1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-    </span>
-    <span class="sa-aviso-texto">
-      Tienes <strong>{{ por_calificar }} entrega{{ por_calificar|pluralize }}</strong> esperando calificación.
-    </span>
+<div class="sa-titulillo">Lo que te está esperando</div>
+{% include 'comun/_avisos.html' %}
+
+{% comment %}
+  Qué clases le tocan hoy. Los períodos no guardan horas —cada curso empieza a
+  una distinta y el colegio organiza el día por períodos, no por reloj— así que
+  se muestra el orden, que es como lo nombran ahí.
+{% endcomment %}
+{% if clases %}
+<div class="sa-titulillo">Tus clases de hoy</div>
+<div class="row g-2">
+  {% for clase in clases %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <a class="card h-100 text-decoration-none" href="{% url 'tareas:lista_tareas' clase.asignacion.pk %}">
+      <div class="card-body d-flex align-items-center gap-3 py-2">
+        <span class="badge bg-primary rounded-pill" style="min-width:3rem;">{{ clase.periodo.nombre }}</span>
+        <span>
+          <span class="d-block fw-bold">{{ clase.asignacion.materia }}</span>
+          <span class="small text-muted">
+            {{ clase.asignacion.curso.grado }}° {{ clase.asignacion.curso.paralelo }}
+            {% if clase.aula %} · aula {{ clase.aula }}{% endif %}
+          </span>
+        </span>
+      </div>
+    </a>
   </div>
+  {% endfor %}
 </div>
 {% endif %}
 
-<div class="sa-titulillo">Mis materias asignadas</div>
-<table class="table">
-  <thead><tr><th>Materia</th><th>Curso</th><th>Gestión</th><th>Notas</th><th>Tareas</th></tr></thead>
-  <tbody>
-  {% for a in asignaciones %}
+<div class="sa-titulillo">Cómo va cada curso</div>
+<table class="table bg-white shadow-sm align-middle sa-tabla-apilada">
+  <thead>
     <tr>
-      <td>{{ a.materia }}</td>
-      <td>{{ a.curso }}</td>
-      <td>{{ a.gestion }}</td>
-      <td>
-        <div class="btn-group btn-group-sm">
-          <a class="btn btn-outline-primary" href="{% url 'calificaciones:registrar_notas' a.id 1 %}">T1</a>
-          <a class="btn btn-outline-primary" href="{% url 'calificaciones:registrar_notas' a.id 2 %}">T2</a>
-          <a class="btn btn-outline-primary" href="{% url 'calificaciones:registrar_notas' a.id 3 %}">T3</a>
-        </div>
+      <th>Materia y curso</th>
+      <th class="text-center">Estudiantes</th>
+      <th class="text-center">Promedio</th>
+      <th class="text-center">Reprobando</th>
+      <th class="text-center">Sin calificar</th>
+      <th class="text-end">Abrir</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for fila in filas %}
+    <tr>
+      <td data-principal>
+        {{ fila.asignacion.materia }}
+        <span class="d-block small text-muted">
+          {{ fila.asignacion.curso.grado }}° {{ fila.asignacion.curso.paralelo }} ·
+          {{ fila.tareas }} tarea{{ fila.tareas|pluralize }}
+        </span>
       </td>
-      <td><a class="btn btn-sm btn-primary" href="{% url 'tareas:lista_tareas' a.id %}">Gestionar</a></td>
+      <td class="text-center" data-rotulo="Estudiantes">{{ fila.estudiantes }}</td>
+      <td class="text-center" data-rotulo="Promedio">
+        {% if fila.promedio %}
+          {% comment %}
+            El promedio es del trimestre que el docente está cargando, no del
+            año: mezclarlos escondería que el tercero recién empieza.
+          {% endcomment %}
+          <strong>{{ fila.promedio }}</strong>
+          <span class="d-block small text-muted">
+            T{{ fila.trimestre }} · {{ fila.calificados }} de {{ fila.estudiantes }}
+          </span>
+        {% else %}
+          <span class="text-muted">sin cargar</span>
+        {% endif %}
+      </td>
+      <td class="text-center" data-rotulo="Reprobando">
+        {% if fila.reprobando %}
+          <span class="badge bg-danger">{{ fila.reprobando }}</span>
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+      <td class="text-center" data-rotulo="Sin calificar">
+        {% if fila.esperando %}
+          <span class="badge bg-warning text-dark">{{ fila.esperando }}</span>
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+      <td class="text-end" data-rotulo="Abrir">
+        <div class="btn-group btn-group-sm">
+          <a class="btn btn-outline-primary" href="{% url 'calificaciones:registrar_notas' fila.asignacion.pk 1 %}">T1</a>
+          <a class="btn btn-outline-primary" href="{% url 'calificaciones:registrar_notas' fila.asignacion.pk 2 %}">T2</a>
+          <a class="btn btn-outline-primary" href="{% url 'calificaciones:registrar_notas' fila.asignacion.pk 3 %}">T3</a>
+        </div>
+        <a class="btn btn-sm btn-primary ms-1" href="{% url 'tareas:lista_tareas' fila.asignacion.pk %}">Tareas</a>
+      </td>
     </tr>
   {% empty %}
-    <tr><td colspan="5" class="text-center text-muted">No tienes materias asignadas todavía.</td></tr>
+    <tr><td colspan="6" class="text-center text-muted py-4">
+      No tienes materias asignadas todavía. La dirección es quien las asigna.
+    </td></tr>
   {% endfor %}
   </tbody>
 </table>
+
+{% if filas %}
+<p class="small text-muted">
+  En total, <strong>{{ estudiantes }}</strong> estudiante{{ estudiantes|pluralize }}
+  en {{ filas|length }} materia{{ filas|length|pluralize }}.
+</p>
+{% endif %}
 
 {% endblock %}

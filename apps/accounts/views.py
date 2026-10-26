@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -38,44 +39,42 @@ def redirigir_dashboard(request):
 
 @login_required
 def dashboard_admin(request):
-    from apps.academico.models import Curso, Estudiante, Matricula
+    from apps.accounts import panel_direccion
     from apps.asistencia.services import gestion_vigente
-    from apps.comunicaciones.models import Citacion
 
     gestion = gestion_vigente()
+    if gestion is None:
+        return render(request, 'accounts/dashboard_admin.html', {
+            'sin_gestion': True, 'hoy': timezone.localdate(),
+        })
+
     return render(request, 'accounts/dashboard_admin.html', {
         'avisos': resumenes.para_direccion(gestion),
         'hoy': timezone.localdate(),
-        'total_estudiantes': Estudiante.objects.count(),
-        'total_cursos': Curso.objects.count(),
-        'matriculas_activas': Matricula.objects.filter(activa=True).count(),
-        'citaciones_pendientes': Citacion.objects.filter(estado=Citacion.Estado.PENDIENTE).count(),
+        'gestion': gestion,
+        'cifras': panel_direccion.cifras_del_dia(gestion),
+        'trabado': panel_direccion.trabado(gestion),
+        'contexto': panel_direccion.contexto(gestion),
     })
 
 
 @login_required
 def dashboard_profesor(request):
-    from apps.academico.models import AsignacionDocente
+    from apps.accounts import panel_docente
 
-    from apps.tareas.models import EntregaTarea
-
-    asignaciones = AsignacionDocente.objects.filter(
-        profesor=request.user
-    ).select_related('curso__gestion', 'materia')
-
-    # Entregas que el estudiante ya hizo y el profesor todavia no califico.
-    # "Sin calificar" es no tener nota en la planilla: ahi vive la nota.
-    from apps.tareas.notas import sin_calificar
-
-    por_calificar = sin_calificar(EntregaTarea.objects.filter(
-        tarea__asignacion__profesor=request.user,
-        estado__in=[EntregaTarea.Estado.ENTREGADA, EntregaTarea.Estado.ATRASADA],
-    )).count()
+    hoy = timezone.localdate()
+    clases = panel_docente.clases_de_hoy(request.user, hoy)
+    filas = panel_docente.resumen_de_cursos(request.user)
 
     return render(request, 'accounts/dashboard_profesor.html', {
-        'asignaciones': asignaciones, 'por_calificar': por_calificar,
+        'hoy': hoy,
+        'clases': clases,
+        'filas': filas,
+        'avisos': panel_docente.avisos_para(filas, clases),
         # Sus materias salen de lo que dicta, no de una columna en su usuario.
-        'materias': sorted({str(a.materia) for a in asignaciones}),
+        'materias': sorted({str(fila['asignacion'].materia) for fila in filas}),
+        'estudiantes': sum(fila['estudiantes'] for fila in filas),
+        'esperando': sum(fila['esperando'] for fila in filas),
     })
 
 
@@ -96,7 +95,7 @@ def dashboard_estudiante(request):
     if estudiante is None:
         return render(request, 'accounts/dashboard_estudiante.html', {'estudiante': None})
 
-    _, totales = pivotar_notas(notas_de_gestion(estudiante, gestion_actual(estudiante)))
+    materias, totales = pivotar_notas(notas_de_gestion(estudiante, gestion_actual(estudiante)))
     promedio = totales['promedio'] if totales and totales['promedio'] != '-' else None
 
     matricula = estudiante.matriculas.filter(activa=True).select_related('curso__gestion').first()
@@ -114,10 +113,21 @@ def dashboard_estudiante(request):
         )
         pendientes = sum(1 for t in tareas if t.pk not in entregadas)
 
+    from apps.academico import clases
+
     return render(request, 'accounts/dashboard_estudiante.html', {
         'estudiante': estudiante,
         'avisos': resumenes.para_estudiante(estudiante),
         'promedio': promedio,
+        'hoy': timezone.localdate(),
+        # Qué tiene hoy: es lo primero que mira un estudiante por la mañana, y
+        # hasta ahora obligaba a abrir el horario de la semana entera.
+        'clases': clases.del_dia(timezone.localdate(),
+                                 curso=matricula.curso if matricula else None),
+        # El promedio general esconde en qué materia está flojo: con 55 de
+        # promedio se puede estar reprobando dos.
+        'materias': materias,
+        'reprobando': [m for m in materias if not m['aprobado']],
         'tareas_pendientes': pendientes,
         'faltas': Asistencia.objects.filter(
             estudiante=estudiante, estado=Asistencia.Estado.FALTA,
@@ -142,8 +152,16 @@ def dashboard_regente(request):
     total = matriculas_del_dia(gestion, hoy).count() if gestion else 0
     resumen['sin_registrar'] = max(0, total - len(registros))
 
+    from apps.accounts import panel_regente
+
     return render(request, 'accounts/dashboard_regente.html', {
         'hoy': hoy, 'resumen': resumen, 'avisos': resumenes.para_regente(gestion),
+        # El regente no trabaja con un total: trabaja curso por curso, y con
+        # los nombres de quienes se acercan al umbral de faltas.
+        'cursos': panel_regente.por_curso(gestion, hoy) if gestion else [],
+        'acumulan': panel_regente.acumulan_faltas(gestion) if gestion else [],
+        'dias': panel_regente.ultimos_dias(gestion) if gestion else [],
+        'umbral': settings.UMBRAL_FALTAS_ALERTA,
     })
 
 

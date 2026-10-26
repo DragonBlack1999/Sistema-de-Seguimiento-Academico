@@ -4,6 +4,7 @@ import datetime
 
 from django.conf import settings
 
+from apps.academico.clases import DIA_POR_WEEKDAY
 from apps.academico.models import Curso, Gestion, Horario, Matricula
 
 from .models import Asistencia
@@ -30,15 +31,9 @@ def gestion_vigente():
         Gestion.objects.order_by('-anio').first()
 
 
-# Los lunes son 0 en datetime.weekday(). El sábado es día de clase; el domingo no.
-DIA_POR_WEEKDAY = {
-    0: Horario.Dia.LUNES,
-    1: Horario.Dia.MARTES,
-    2: Horario.Dia.MIERCOLES,
-    3: Horario.Dia.JUEVES,
-    4: Horario.Dia.VIERNES,
-    5: Horario.Dia.SABADO,
-}
+# Qué día del horario es cada fecha. Vive en `academico.clases` porque también
+# lo preguntan los paneles del docente y del estudiante, y «el sábado es día de
+# clase y el domingo no» no puede estar escrito en dos sitios.
 
 
 def cursos_en_capacitacion(fecha):

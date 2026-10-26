@@ -42,4 +42,84 @@
   <a href="{% url 'noticias:lista' %}" class="btn btn-outline-secondary">Noticias</a>
 </div>
 
+{% if cursos %}
+{% comment %}
+  Un total no se puede trabajar: «faltan 40» no dice por dónde empezar. Por
+  curso sí, y cada uno abre su propia lista en la puerta.
+{% endcomment %}
+<div class="sa-titulillo">A qué curso le falta gente</div>
+<div class="d-flex flex-wrap gap-2">
+  {% for c in cursos %}
+    <a class="btn {% if c.pendientes %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+       href="{% url 'asistencia:puerta' %}?fecha={{ hoy|date:'Y-m-d' }}&curso={{ c.curso.pk }}"
+       title="{{ c.curso }} · {{ c.total }} estudiantes">
+      {{ c.curso.grado }}° {{ c.curso.paralelo }}
+      {% if c.pendientes %}
+        <span class="badge bg-danger ms-1">{{ c.pendientes }}</span>
+      {% else %}
+        <span class="badge bg-success ms-1">✓</span>
+      {% endif %}
+    </a>
+  {% endfor %}
+</div>
+<p class="small text-muted mt-1">El número es la gente que todavía no entró.</p>
+{% endif %}
+
+{% if acumulan %}
+{% comment %}
+  Quienes se acercan al umbral de faltas. El sistema cita solo al cruzarlo;
+  verlos antes es lo que permite llamar a la familia a tiempo.
+{% endcomment %}
+<div class="sa-titulillo">Ojo con estos</div>
+<div class="card shadow-sm">
+  <div class="list-group list-group-flush">
+    {% for persona in acumulan %}
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+      <span>{{ persona.nombre }}</span>
+      {% if persona.citado %}
+        <span class="badge bg-danger">{{ persona.faltas }} faltas · ya citado</span>
+      {% elif persona.paso_el_umbral %}
+        <span class="badge bg-danger">{{ persona.faltas }} faltas · sin citar</span>
+      {% else %}
+        <span class="badge bg-warning text-dark">{{ persona.faltas }} faltas</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<p class="small text-muted mt-1">
+  A las {{ umbral }} faltas el sistema genera una citación automática.
+</p>
+{% endif %}
+
+{% if dias %}
+{% comment %}
+  Si lo de hoy es raro o es lo de siempre: «faltan 40» no significa nada hasta
+  que se sabe que ayer faltaban 12.
+{% endcomment %}
+<div class="sa-titulillo">Cómo viene la semana</div>
+<table class="table bg-white shadow-sm align-middle sa-tabla-apilada">
+  <thead><tr><th>Día</th><th class="text-center">Entraron</th><th class="text-center">De</th><th class="text-center">Asistencia</th></tr></thead>
+  <tbody>
+    {% for dia in dias %}
+    <tr>
+      <td data-principal>
+        {{ dia.fecha|date:"l j \d\e F"|capfirst }}
+        {% if dia.fecha == hoy %}<span class="badge bg-primary ms-1">hoy</span>{% endif %}
+      </td>
+      <td class="text-center" data-rotulo="Entraron">{{ dia.entraron }}</td>
+      <td class="text-center" data-rotulo="De">{{ dia.esperados }}</td>
+      <td class="text-center" data-rotulo="Asistencia">
+        {% if dia.porcentaje is not None %}
+          <strong>{{ dia.porcentaje }}%</strong>
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
 {% endblock %}

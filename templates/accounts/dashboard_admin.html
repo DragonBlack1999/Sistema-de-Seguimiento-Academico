@@ -5,6 +5,8 @@
 <style>
   /* La pantalla más institucional: el color se modera a propósito */
   body { background: var(--sa-neutro) !important; }
+  .sa-cifra { font-size: 2rem; font-weight: 800; line-height: 1; }
+  .sa-cifra-pie { font-weight: 700; font-size: .78rem; }
 </style>
 {% endblock %}
 {% block contenido %}
@@ -12,8 +14,77 @@
 <h2 class="sa-saludo">Panel de administración</h2>
 <p class="sa-subsaludo">{{ hoy|date:"l j \d\e F \d\e Y"|capfirst }}</p>
 
+{% if sin_gestion %}
+  <div class="alert alert-warning">
+    No hay ninguna gestión escolar registrada. Sin año escolar no hay cursos,
+    matrículas ni notas que mostrar.
+  </div>
+{% else %}
+
 <div class="sa-titulillo">Hoy en el colegio</div>
 {% include 'comun/_avisos.html' %}
+
+{% comment %}
+  Las cuatro cifras cambiaron de criterio: antes eran estudiantes, cursos y
+  matrículas, que no cambian de un mes al otro. Un número que siempre dice lo
+  mismo deja de leerse. Ahora son las que cambian hoy y sobre las que se
+  decide; las otras bajaron al pie, como contexto.
+{% endcomment %}
+<div class="row g-3 mt-1">
+  <div class="col-6 col-md-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="sa-cifra">
+        {% if cifras.asistencia is not None %}{{ cifras.asistencia }}%{% else %}—{% endif %}
+      </div>
+      <div class="small text-muted sa-cifra-pie">Asistencia de hoy</div>
+      <div class="small text-muted">{{ cifras.entraron }} de {{ cifras.esperados }} entraron</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="sa-cifra">{{ cifras.promedio|default:"—" }}</div>
+      <div class="small text-muted sa-cifra-pie">Promedio del colegio</div>
+      <div class="small text-muted">sobre 100</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100" {% if cifras.reprobando %}style="background:#fdf5f4; border-color:#f3cbc5 !important;"{% endif %}>
+      <div class="card-body">
+      <div class="sa-cifra" {% if cifras.reprobando %}style="color:var(--sa-error-tinta);"{% endif %}>{{ cifras.reprobando }}</div>
+      <div class="small text-muted sa-cifra-pie">Con promedio bajo 51</div>
+      <div class="small text-muted">de {{ cifras.evaluados }} con notas cargadas</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100" {% if cifras.citaciones %}style="background:#fffaf3; border-color:#f6dcbc !important;"{% endif %}>
+      <div class="card-body">
+      <div class="sa-cifra" {% if cifras.citaciones %}style="color:var(--sa-aviso-tinta);"{% endif %}>{{ cifras.citaciones }}</div>
+      <div class="small text-muted sa-cifra-pie">Citaciones pendientes</div>
+      <div class="small text-muted">sin atender</div>
+    </div></div>
+  </div>
+</div>
+
+{% if trabado %}
+<div class="sa-titulillo">Esperando a alguien</div>
+<div class="card shadow-sm">
+  <div class="list-group list-group-flush">
+    {% for cosa in trabado %}
+    <div class="list-group-item d-flex justify-content-between align-items-center gap-3 flex-wrap">
+      <span>
+        {% if cosa.tono == 'urgente' %}
+          <span class="badge bg-danger me-1">Urgente</span>
+        {% else %}
+          <span class="badge bg-warning text-dark me-1">Atención</span>
+        {% endif %}
+        {{ cosa.texto }}
+      </span>
+      <a class="btn btn-sm btn-outline-primary" href="{% url cosa.url_nombre %}">{{ cosa.accion }}</a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 <a href="{% url 'accounts:tablero' %}" class="sa-acceso verde mt-4 d-flex" style="flex-direction:row; align-items:center; gap:1rem; text-decoration:none;">
   <svg class="sa-acceso-icono" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -21,38 +92,10 @@
   </svg>
   <span class="flex-grow-1">
     <span class="sa-acceso-nombre d-block" style="margin-top:0; font-size:1.05rem;">Tablero de dirección</span>
-    <span class="sa-acceso-pie">Rendimiento, asistencia y quién necesita atención</span>
+    <span class="sa-acceso-pie">Rendimiento por materia, tendencia de asistencia y quién necesita atención</span>
   </span>
   <svg class="sa-acceso-flecha" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
 </a>
-
-<div class="sa-titulillo">El colegio en números</div>
-<div class="row g-3">
-  <div class="col-6 col-md-3">
-    <div class="card h-100"><div class="card-body">
-      <div style="font-size:2rem; font-weight:800; line-height:1;">{{ total_estudiantes }}</div>
-      <div class="small text-muted" style="font-weight:700;">Estudiantes</div>
-    </div></div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card h-100"><div class="card-body">
-      <div style="font-size:2rem; font-weight:800; line-height:1;">{{ total_cursos }}</div>
-      <div class="small text-muted" style="font-weight:700;">Cursos</div>
-    </div></div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card h-100"><div class="card-body">
-      <div style="font-size:2rem; font-weight:800; line-height:1;">{{ matriculas_activas }}</div>
-      <div class="small text-muted" style="font-weight:700;">Matrículas activas</div>
-    </div></div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card h-100" style="background:#fffaf3; border-color:#f6dcbc !important;"><div class="card-body">
-      <div style="font-size:2rem; font-weight:800; line-height:1; color:var(--sa-aviso-tinta);">{{ citaciones_pendientes }}</div>
-      <div class="small" style="font-weight:700; color:#8a6425;">Citaciones pendientes</div>
-    </div></div>
-  </div>
-</div>
 
 <div class="sa-titulillo">Acciones</div>
 <div class="d-flex flex-wrap gap-2">
@@ -61,7 +104,14 @@
   <a href="{% url 'comunicaciones:buscar_boletines' %}" class="btn btn-outline-secondary">Boletines de notas</a>
   <a href="{% url 'comunicaciones:crear_citacion' %}" class="btn btn-outline-secondary">Generar citación</a>
   <a href="{% url 'noticias:crear' %}" class="btn btn-outline-secondary">Publicar noticia</a>
-  <a href="/admin/" class="btn btn-outline-secondary">Gestionar datos</a>
+  <a href="{% url 'datos:indice' %}" class="btn btn-outline-secondary">Gestionar datos</a>
 </div>
 
+<p class="small text-muted mt-4">
+  {{ gestion }} · <strong>{{ contexto.estudiantes }}</strong> estudiantes matriculados ·
+  <strong>{{ contexto.cursos }}</strong> cursos ·
+  <strong>{{ contexto.docentes }}</strong> docentes.
+</p>
+
+{% endif %}
 {% endblock %}

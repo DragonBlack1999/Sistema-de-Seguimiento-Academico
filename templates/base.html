@@ -145,7 +145,13 @@
                                 <li><a class="dropdown-item" href="{% url 'academico:horario_constructor' %}">Armar horarios</a></li>
                                 <li><a class="dropdown-item" href="{% url 'accounts:solicitudes_de_clave' %}">Pedidos de contraseña</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="/admin/">Gestionar datos</a></li>
+                                {% comment %}
+                                  «Gestionar datos» apunta a la pantalla propia, no a /admin/: de las
+                                  tres cuentas de administración solo el superusuario pasa el segundo
+                                  inicio de sesión de Django. El panel avanzado sigue existiendo por
+                                  URL para emergencias.
+                                {% endcomment %}
+                                <li><a class="dropdown-item" href="{% url 'datos:indice' %}">Gestionar datos</a></li>
                             </ul>
                         </li>
                     {% endif %}

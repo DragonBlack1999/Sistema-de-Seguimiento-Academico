@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% block titulo %}Cerrar el año escolar{% endblock %}
+{% block contenido %}
+
+<h2 class="sa-saludo">Cerrar el año escolar</h2>
+
+{% if impedimento %}
+  <div class="alert alert-warning mt-3">{{ impedimento }}</div>
+  {% if ultimo_cierre %}
+  <div class="card shadow-sm" style="max-width:640px;">
+    <div class="card-body">
+      <div class="h6">Último cierre</div>
+      <p class="mb-0">
+        <strong>{{ ultimo_cierre.gestion }} → {{ ultimo_cierre.gestion_nueva }}</strong>,
+        el {{ ultimo_cierre.fecha|date:"j \d\e F \d\e Y" }}
+        {% if ultimo_cierre.cerrada_por %}por {{ ultimo_cierre.cerrada_por.get_full_name }}{% endif %}.
+      </p>
+      <p class="small text-muted mb-0">
+        {{ ultimo_cierre.promovidos }} pasaron de grado ·
+        {{ ultimo_cierre.repitentes }} repitieron ·
+        {{ ultimo_cierre.egresados }} egresaron.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+  <a class="btn btn-outline-secondary mt-3" href="{% url 'datos:indice' %}">Volver a Gestión de datos</a>
+
+{% else %}
+
+<p class="sa-subsaludo">
+  Cerrar la gestión <strong>{{ gestion }}</strong> y abrir la <strong>{{ anio_nuevo }}</strong>.
+</p>
+
+{% comment %}
+  El aviso va antes de la lista y no después: lo que sigue mueve a todo el
+  colegio de grado y no se deshace apretando «atrás».
+{% endcomment %}
+<div class="alert alert-danger">
+  <strong>Esto mueve de grado a los {{ total }} estudiantes del colegio y no se deshace.</strong>
+  <ul class="mb-0 mt-2">
+    <li>Cada estudiante marcado pasa al grado siguiente, con su mismo paralelo.</li>
+    <li>Los que desmarques repiten su grado, también con su paralelo.</li>
+    <li>Los {{ egresan }} de 6° egresan: su historial queda entero, pero su cuenta deja de entrar.</li>
+    <li>Las matrículas de {{ gestion }} quedan inactivas y la gestión activa pasa a ser {{ anio_nuevo }}.</li>
+  </ul>
+  <hr>
+  <p class="mb-0 small">
+    Antes de seguir, haz un respaldo de la base. Si algo sale mal, es la única
+    forma de volver atrás.
+  </p>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  <div class="sa-titulillo">Qué se lleva al año nuevo</div>
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <p class="mb-2">
+        Se crean los <strong>{{ cursos_cuantos }} cursos</strong> de {{ anio_nuevo }} con los
+        mismos niveles, grados y paralelos. Eso va siempre: sin cursos no hay dónde matricular.
+      </p>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="copiar_asignaciones"
+               id="copiarAsignaciones" checked>
+        <label class="form-check-label" for="copiarAsignaciones">
+          Copiar <strong>quién dicta qué</strong> ({{ asignaciones }} asignaciones)
+        </label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="copiar_horario"
+               id="copiarHorario" checked>
+        <label class="form-check-label" for="copiarHorario">
+          Copiar los <strong>períodos y el horario</strong> ({{ horarios }} bloques)
+        </label>
+        {% comment %}
+          El horario cuelga de las asignaciones: sin copiarlas, los bloques no
+          tendrían docente a quien apuntar.
+        {% endcomment %}
+        <div class="form-text">Necesita que se copie también quién dicta qué.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sa-titulillo">Quién pasa de grado</div>
+  <p class="text-muted">
+    Están todos marcados. <strong>Desmarca a quien repite.</strong>
+    {% if senalados %}
+      Hay <strong>{{ senalados }}</strong> con algo que mirar, señalados en ámbar.
+    {% endif %}
+  </p>
+
+  {% for bloque in cursos %}
+  <div class="card shadow-sm mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span>
+        <strong>{{ bloque.curso.grado }}° {{ bloque.curso.paralelo }}</strong>
+        <span class="text-muted small ms-1">{{ bloque.estudiantes|length }} estudiantes</span>
+        {% if bloque.egresa %}
+          <span class="badge bg-dark ms-1">Egresan</span>
+        {% else %}
+          <span class="badge bg-light text-secondary ms-1">
+            pasan a {{ bloque.curso.grado|add:1 }}° {{ bloque.curso.paralelo }}
+          </span>
+        {% endif %}
+      </span>
+      <button type="button" class="btn btn-sm btn-outline-secondary btn-curso"
+              data-curso="{{ bloque.curso.pk }}">Marcar o desmarcar todo el curso</button>
+    </div>
+    <div class="list-group list-group-flush">
+      {% for fila in bloque.estudiantes %}
+      <label class="list-group-item d-flex align-items-center gap-2">
+        <input class="form-check-input m-0" type="checkbox" name="pasa"
+               value="{{ fila.estudiante.pk }}" data-curso="{{ bloque.curso.pk }}"
+               {% if fila.pasa %}checked{% endif %}>
+        <span class="flex-grow-1">
+          {{ fila.estudiante.usuario.get_full_name }}
+          <span class="d-block small text-muted font-monospace">{{ fila.estudiante.rude }}</span>
+        </span>
+        {% if fila.senal %}
+          <span class="badge bg-warning text-dark">{{ fila.senal }}</span>
+        {% else %}
+          <span class="badge bg-success">aprobó todo</span>
+        {% endif %}
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="card shadow-sm border-danger mb-4">
+    <div class="card-body">
+      <label class="form-label" for="confirmacion">
+        Para confirmar, escribe el año que se cierra: <strong>{{ gestion }}</strong>
+      </label>
+      {% comment %}
+        Escribir el año y no solo apretar «sí»: es el único paso que obliga a
+        leer qué año se está cerrando, y esta pantalla no tiene vuelta atrás.
+      {% endcomment %}
+      <input type="text" class="form-control" id="confirmacion" name="confirmacion"
+             style="max-width:12rem;" autocomplete="off" required>
+      <button type="submit" class="btn btn-danger mt-3">
+        Cerrar {{ gestion }} y abrir {{ anio_nuevo }}
+      </button>
+      <a class="btn btn-outline-secondary mt-3" href="{% url 'datos:indice' %}">Cancelar</a>
+    </div>
+  </div>
+</form>
+
+<script>
+(function () {
+  // Marcar o desmarcar un curso entero: con 402 casillas, hacerlo a mano para
+  // un curso repetidor completo son veintitrés clics.
+  document.querySelectorAll('.btn-curso').forEach(function (boton) {
+    boton.addEventListener('click', function () {
+      const casillas = document.querySelectorAll(
+        'input[name="pasa"][data-curso="' + boton.dataset.curso + '"]');
+      const encender = ![...casillas].every(c => c.checked);
+      casillas.forEach(c => { c.checked = encender; });
+    });
+  });
+
+  // El horario cuelga de las asignaciones: no se puede copiar uno sin el otro.
+  const asignaciones = document.getElementById('copiarAsignaciones');
+  const horario = document.getElementById('copiarHorario');
+  function acompasar() {
+    horario.disabled = !asignaciones.checked;
+    if (!asignaciones.checked) horario.checked = false;
+  }
+  asignaciones.addEventListener('change', acompasar);
+  acompasar();
+})();
+</script>
+{% endif %}
+{% endblock %}

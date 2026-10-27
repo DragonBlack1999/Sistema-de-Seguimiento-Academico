@@ -402,3 +402,74 @@ def quitar_horario(request, horario_id):
         messages.success(request, 'Clase quitada del horario.')
 
     return redirect(_url_constructor(curso_id))
+
+
+# ──────────────── cerrar el año escolar y abrir el siguiente ────────────────
+
+MENSAJE_SOLO_DIRECCION = 'Solo la dirección o la secretaría pueden cerrar el año escolar.'
+
+
+@login_required
+def cerrar_gestion(request):
+    """La pantalla que mueve de grado a todo el colegio.
+
+    En GET no escribe nada: muestra lo que pasaría, estudiante por estudiante,
+    con todos marcados y señalados los que habría que mirar. En POST hace el
+    cierre entero en una transacción.
+    """
+    from apps.academico import cierre
+    from apps.asistencia.services import gestion_vigente
+
+    if not request.user.es_admin():
+        return HttpResponseForbidden(MENSAJE_SOLO_DIRECCION)
+
+    gestion = gestion_vigente()
+    try:
+        anio_nuevo = cierre.revisar(gestion)
+    except cierre.NoSePuedeCerrar as error:
+        return render(request, 'academico/cerrar_gestion.html', {
+            'gestion': gestion, 'impedimento': str(error),
+            'ultimo_cierre': cierre.CierreDeGestion.objects.first(),
+        })
+
+    if request.method == 'POST':
+        if request.POST.get('confirmacion', '').strip().upper() != str(gestion.anio):
+            messages.error(
+                request,
+                f'Para cerrar hay que escribir {gestion.anio} en la casilla de confirmación. '
+                f'No se movió nada.',
+            )
+            return redirect('academico:cerrar_gestion')
+
+        try:
+            acta = cierre.cerrar(
+                gestion,
+                promovidos=[int(x) for x in request.POST.getlist('pasa') if x.isdigit()],
+                por=request.user,
+                copiar_horario=bool(request.POST.get('copiar_horario')),
+                copiar_asignaciones=bool(request.POST.get('copiar_asignaciones')),
+            )
+        except cierre.NoSePuedeCerrar as error:
+            messages.error(request, f'{error} No se movió nada.')
+            return redirect('academico:cerrar_gestion')
+
+        messages.success(
+            request,
+            f'Gestión {acta.gestion} cerrada. Se abrió la {acta.gestion_nueva} con '
+            f'{acta.promovidos} estudiante(s) de grado nuevo, {acta.repitentes} repitiendo '
+            f'y {acta.egresados} egresado(s).',
+        )
+        return redirect('accounts:dashboard_admin')
+
+    cursos = cierre.propuesta(gestion)
+    return render(request, 'academico/cerrar_gestion.html', {
+        'gestion': gestion,
+        'anio_nuevo': anio_nuevo,
+        'cursos': cursos,
+        'total': sum(len(c['estudiantes']) for c in cursos),
+        'egresan': sum(len(c['estudiantes']) for c in cursos if c['egresa']),
+        'senalados': sum(1 for c in cursos for e in c['estudiantes'] if e['senal']),
+        'asignaciones': AsignacionDocente.objects.filter(curso__gestion=gestion).count(),
+        'horarios': Horario.objects.filter(asignacion__curso__gestion=gestion).count(),
+        'cursos_cuantos': Curso.objects.filter(gestion=gestion).count(),
+    })

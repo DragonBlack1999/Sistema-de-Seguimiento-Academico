@@ -14,4 +14,7 @@ urlpatterns = [
     path('horarios/materias/agregar/', views.agregar_materia_curso, name='agregar_materia_curso'),
     path('horarios/colocar/', views.colocar_horario, name='colocar_horario'),
     path('horarios/<int:horario_id>/quitar/', views.quitar_horario, name='quitar_horario'),
+
+    # Cerrar el año escolar y abrir el siguiente.
+    path('cerrar-gestion/', views.cerrar_gestion, name='cerrar_gestion'),
 ]

@@ -29,6 +29,16 @@
 <div class="sa-titulillo mt-5">Se maneja en su propia pantalla</div>
 <div class="card shadow-sm">
     <div class="list-group list-group-flush">
+        {% comment %}
+          Va el primero y en rojo: es lo único de esta pantalla que mueve a todo
+          el colegio de una vez y no se deshace.
+        {% endcomment %}
+        <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+           href="{% url 'academico:cerrar_gestion' %}">
+            <span><strong class="text-danger">Cerrar el año escolar</strong><br>
+                <span class="small text-muted">Pasar a los estudiantes al grado siguiente y abrir la gestión nueva.</span></span>
+            <span class="text-muted">→</span>
+        </a>
         <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
            href="{% url 'accounts:solicitudes_de_clave' %}">
             <span><strong>Pedidos de contraseña</strong><br>

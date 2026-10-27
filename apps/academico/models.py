@@ -200,6 +200,44 @@ class Matricula(models.Model):
         return f'{self.estudiante} - {self.curso}'
 
 
+class CierreDeGestion(models.Model):
+    """Constancia de que un año escolar se cerró y se abrió el siguiente.
+
+    Existe por tres razones, y las tres importan:
+
+    - **Es un acto institucional.** Mover a 402 estudiantes de grado no es una
+      edición más: queda quién lo hizo y cuándo, como queda en un acta.
+    - **Impide cerrar dos veces.** Sin esta fila, apretar el botón otra vez
+      volvería a promover a todos, esta vez desde el año nuevo.
+    - **Explica qué pasó.** Cuántos pasaron, cuántos repiten y cuántos
+      egresaron es lo primero que se pregunta al día siguiente.
+    """
+
+    gestion = models.OneToOneField(
+        Gestion, on_delete=models.CASCADE, related_name='cierre',
+        help_text='La gestión que se cerró.',
+    )
+    gestion_nueva = models.ForeignKey(
+        Gestion, on_delete=models.CASCADE, related_name='cierres_que_la_abrieron',
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+    cerrada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name='gestiones_cerradas',
+    )
+    promovidos = models.PositiveIntegerField(default=0)
+    repitentes = models.PositiveIntegerField(default=0)
+    egresados = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-fecha']
+        verbose_name = 'Cierre de gestión'
+        verbose_name_plural = 'Cierres de gestión'
+
+    def __str__(self):
+        return f'{self.gestion} → {self.gestion_nueva}'
+
+
 class Periodo(models.Model):
     """Una fila de la grilla de horario, propia de un curso.
 

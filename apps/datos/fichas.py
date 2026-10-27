@@ -20,10 +20,15 @@ from typing import Callable
 from django.db.models import Count, Prefetch, Q
 
 from apps.academico.busqueda import buscar_estudiantes, buscar_por_nombre
+from apps.academico.forms import AsignacionDocenteForm, EstudianteForm
 from apps.academico.models import (
     AsignacionDocente, Curso, Estudiante, Gestion, Materia, Matricula,
 )
 from apps.accounts.models import Usuario
+
+from .formularios import (
+    CursoForm, DocenteForm, GestionForm, MateriaForm, MatriculaForm, PersonalForm, TutorForm,
+)
 
 
 # ──────────────────────────── las piezas ────────────────────────────
@@ -67,8 +72,21 @@ class Ficha:
     ayuda_busqueda: str = ''
     filtros: tuple = ()
     esta_de_baja: Callable | None = None   # para pintar la insignia
+    # El artículo del singular. Sin esto el botón dice «Nuevo materia», que no
+    # se dice: el género no se puede sacar de la terminación sin equivocarse.
+    articulo: str = 'Nuevo'
     por_pagina: int = 25
     icono: str = 'verde'                   # color de la tarjeta del índice
+
+    # Alta y edición: el formulario de la entidad. Sin él, la ficha es de solo
+    # lectura y las pantallas no ofrecen ningún botón de escribir.
+    formulario: type | None = None
+    # Dar de baja y volver a dar de alta. Reciben el objeto y lo guardan. No
+    # todas las entidades tienen estado: un curso o una materia existen o no.
+    dar_de_baja: Callable | None = None
+    dar_de_alta: Callable | None = None
+    # Qué decirle a quien va a dar de baja, que no es lo mismo en cada caso.
+    texto_baja: str = ''
 
     # Las plantillas de Django LLAMAN a lo que encuentran si es invocable, y
     # `buscador` y `esta_de_baja` son funciones que esperan argumentos: un
@@ -81,6 +99,14 @@ class Ficha:
     @property
     def tiene_estado(self):
         return self.esta_de_baja is not None
+
+    @property
+    def se_puede_escribir(self):
+        return self.formulario is not None
+
+    @property
+    def se_puede_dar_de_baja(self):
+        return self.dar_de_baja is not None
 
     def consulta(self):
         """El queryset completo de la ficha, listo para contar o paginar."""
@@ -178,6 +204,46 @@ FILTRO_GESTION_CURSO = Filtro(
 
 GRUPOS = ('Las personas', 'El colegio', 'Inscripciones')
 
+# ───────────────────── dar de baja y volver a dar de alta ─────────────────────
+
+def _cuenta_de(objeto):
+    """El `Usuario` de un registro: puede ser él mismo o el de su estudiante."""
+    return getattr(objeto, 'usuario', objeto)
+
+
+def _apagar_cuenta(objeto):
+    """Sin acceso al sistema, y fuera de las listas del año en curso.
+
+    No se borra nada: las notas, la asistencia y el boletín siguen enteros, que
+    es lo que pide el archivo del colegio.
+    """
+    cuenta = _cuenta_de(objeto)
+    cuenta.is_active = False
+    cuenta.save(update_fields=['is_active'])
+    if isinstance(objeto, Estudiante):
+        Matricula.objects.filter(estudiante=objeto, activa=True).update(activa=False)
+
+
+def _encender_cuenta(objeto):
+    cuenta = _cuenta_de(objeto)
+    cuenta.is_active = True
+    cuenta.save(update_fields=['is_active'])
+
+
+def _bajar_matricula(matricula):
+    matricula.activa = False
+    matricula.save(update_fields=['activa'])
+
+
+def _subir_matricula(matricula):
+    # Una sola vigente por año: la que hubiera se apaga, como al editarla.
+    Matricula.objects.filter(
+        estudiante=matricula.estudiante, curso__gestion=matricula.curso.gestion,
+    ).exclude(pk=matricula.pk).update(activa=False)
+    matricula.activa = True
+    matricula.save(update_fields=['activa'])
+
+
 REGISTRO = {}
 
 
@@ -210,6 +276,10 @@ _registrar(Ficha(
     ayuda_busqueda='Por nombre, apellido, RUDE o curso. Las tildes no importan.',
     filtros=(FILTRO_CURSO, _filtro_estado('usuario__is_active')),
     esta_de_baja=lambda e: not e.usuario.is_active,
+    formulario=EstudianteForm,
+    dar_de_baja=_apagar_cuenta, dar_de_alta=_encender_cuenta,
+    texto_baja='Deja de entrar al sistema y sale de las listas de su curso. '
+               'Sus notas, su asistencia y su boletín quedan enteros.',
 ))
 
 _registrar(Ficha(
@@ -231,6 +301,10 @@ _registrar(Ficha(
     ayuda_busqueda='Por nombre, apellido, usuario o carnet.',
     filtros=(_filtro_estado(),),
     esta_de_baja=lambda u: not u.is_active,
+    formulario=DocenteForm,
+    dar_de_baja=_apagar_cuenta, dar_de_alta=_encender_cuenta,
+    texto_baja='Deja de entrar al sistema. Las materias que tenía a su cargo '
+               'siguen asignadas: hay que pasárselas a otro docente.',
 ))
 
 _registrar(Ficha(
@@ -251,6 +325,9 @@ _registrar(Ficha(
     ayuda_busqueda='Por nombre, apellido, usuario o carnet.',
     filtros=(_filtro_estado(),),
     esta_de_baja=lambda u: not u.is_active,
+    formulario=PersonalForm,
+    dar_de_baja=_apagar_cuenta, dar_de_alta=_encender_cuenta,
+    texto_baja='Deja de entrar al sistema.',
 ))
 
 _registrar(Ficha(
@@ -273,6 +350,10 @@ _registrar(Ficha(
     ayuda_busqueda='Por nombre, apellido o carnet.',
     filtros=(_filtro_estado(),),
     esta_de_baja=lambda u: not u.is_active,
+    formulario=TutorForm,
+    dar_de_baja=_apagar_cuenta, dar_de_alta=_encender_cuenta,
+    texto_baja='Deja de entrar al sistema y de recibir avisos. Sus hijos siguen '
+               'apuntándolo como tutor.',
 ))
 
 _registrar(Ficha(
@@ -289,6 +370,7 @@ _registrar(Ficha(
         Columna('Hasta', lambda g: g.fecha_fin or '—'),
         Columna('Cursos', lambda g: g.cuantos_cursos),
     ),
+    formulario=GestionForm,
     por_pagina=50,
 ))
 
@@ -309,12 +391,13 @@ _registrar(Ficha(
         Columna('Materias', lambda c: c.cuantas_materias),
     ),
     filtros=(FILTRO_GESTION_CURSO,),
+    formulario=CursoForm,
     por_pagina=50,
 ))
 
 _registrar(Ficha(
     clave='materias', grupo='El colegio', titulo='Materias',
-    singular='materia', icono='naranja',
+    singular='materia', articulo='Nueva', icono='naranja',
     descripcion='Las materias que se dictan en el colegio.',
     modelo=Materia,
     precarga=lambda qs: qs.annotate(cuantos_cursos=Count('asignaciones', distinct=True)),
@@ -325,12 +408,13 @@ _registrar(Ficha(
     ),
     buscador=lambda consulta, qs: qs.filter(nombre__icontains=consulta.strip()),
     ayuda_busqueda='Por nombre de la materia.',
+    formulario=MateriaForm,
     por_pagina=50,
 ))
 
 _registrar(Ficha(
     clave='asignaciones', grupo='El colegio', titulo='Quién dicta qué',
-    singular='asignación', icono='rosa',
+    singular='asignación', articulo='Nueva', icono='rosa',
     descripcion='Qué profesor tiene a su cargo cada materia en cada curso.',
     modelo=AsignacionDocente,
     precarga=lambda qs: qs.select_related('profesor', 'curso__gestion', 'materia'),
@@ -354,11 +438,12 @@ _registrar(Ficha(
         Filtro('profesor', 'Profesor', _profesores,
                lambda qs, valor: qs.filter(profesor_id=valor)),
     ),
+    formulario=AsignacionDocenteForm,
 ))
 
 _registrar(Ficha(
     clave='matriculas', grupo='Inscripciones', titulo='Matrículas',
-    singular='matrícula', icono='verde',
+    singular='matrícula', articulo='Nueva', icono='verde',
     descripcion='En qué curso está inscrito cada estudiante, año por año.',
     modelo=Matricula,
     precarga=lambda qs: qs.select_related('estudiante__usuario', 'curso__gestion'),
@@ -379,6 +464,10 @@ _registrar(Ficha(
                lambda qs, valor: qs.filter(activa=(valor == 'activos'))),
     ),
     esta_de_baja=lambda m: not m.activa,
+    formulario=MatriculaForm,
+    dar_de_baja=_bajar_matricula, dar_de_alta=_subir_matricula,
+    texto_baja='El estudiante sale de las listas de ese curso. El registro de '
+               'que estuvo inscrito se queda.',
 ))
 
 

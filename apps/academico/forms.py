@@ -95,13 +95,23 @@ class EstudianteForm(forms.ModelForm):
         estudiante = super().save(commit=False)
         usuario = getattr(estudiante, 'usuario', None) or Usuario(rol=Usuario.Rol.ESTUDIANTE)
 
+        # El carnet de antes, para saber si cambio: se lee ANTES de pisarlo.
+        ci_anterior = (usuario.ci or '').strip()
+        ci_nuevo = self.cleaned_data['ci_estudiante'].strip()
+
         usuario.username = self.cleaned_data['rude']
         usuario.first_name = self.cleaned_data['nombres']
         usuario.last_name = self.cleaned_data['apellidos']
         usuario.email = self.cleaned_data['email_estudiante']
-        usuario.ci = self.cleaned_data['ci_estudiante']
+        usuario.ci = ci_nuevo
         usuario.rol = Usuario.Rol.ESTUDIANTE
-        usuario.set_password(self.cleaned_data['ci_estudiante'])
+        # La contrasena se fija al crear y cuando el carnet cambia, no en cada
+        # guardado. Antes se fijaba siempre: corregirle el telefono a un
+        # estudiante le devolvia la contrasena al carnet, borrando la que el
+        # mismo hubiera puesto. Desde que existe «cambiar mi contrasena», eso
+        # dejo de ser inofensivo.
+        if usuario.pk is None or ci_nuevo != ci_anterior:
+            usuario.set_password(ci_nuevo)
         usuario.save()
 
         estudiante.usuario = usuario

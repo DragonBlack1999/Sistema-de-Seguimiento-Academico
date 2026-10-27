@@ -186,14 +186,28 @@ class Matricula(models.Model):
     def gestion(self):
         return self.curso.gestion
 
+    # Quien va a dar de baja a la anterior en el mismo guardado lo avisa aquí.
+    # Cambiar a un estudiante de paralelo es, por un instante, tener dos
+    # matrículas vigentes; sin esto, el formulario que existe para hacer ese
+    # cambio se lo prohibía a sí mismo.
+    reemplaza_a_la_vigente = False
+
     def clean(self):
-        if self.estudiante_id and self.curso_id:
+        if self.reemplaza_a_la_vigente:
+            return
+        if self.estudiante_id and self.curso_id and self.activa:
+            # Solo chocan las **activas**. Un estudiante que cambió de paralelo
+            # a mitad de año tiene dos matrículas en la misma gestión, una dada
+            # de baja: exigir que no hubiera ninguna otra hacía imposible
+            # volver a guardar su ficha, sin decir por qué.
             otras = Matricula.objects.filter(
                 estudiante_id=self.estudiante_id, curso__gestion_id=self.curso.gestion_id,
+                activa=True,
             ).exclude(pk=self.pk)
             if otras.exists():
                 raise ValidationError(
-                    f'{self.estudiante} ya tiene una matrícula en la gestión {self.curso.gestion}.'
+                    f'{self.estudiante} ya tiene una matrícula vigente en la '
+                    f'gestión {self.curso.gestion}: {otras.first().curso}.'
                 )
 
     def __str__(self):

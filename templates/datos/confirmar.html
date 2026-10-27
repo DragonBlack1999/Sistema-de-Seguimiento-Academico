@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block titulo %}Borrar {{ ficha.singular }}{% endblock %}
+{% block contenido %}
+
+<h2 class="sa-saludo">Borrar {{ ficha.singular }}</h2>
+<p class="sa-subsaludo">{{ nombre }}</p>
+
+{% comment %}
+  Borrar en cascada es silencioso: Django se lleva lo que cuelga sin decir qué
+  era. Aquí se dice antes, contando también lo que Django borra de una sola
+  sentencia, que es donde viven las notas y la asistencia.
+{% endcomment %}
+{% if protegido %}
+  {% comment %}
+    Hay un PROTECT encima: el colegio decidio que eso no se borra en cascada.
+    Se dice aqui, antes del boton, y no despues de apretarlo.
+  {% endcomment %}
+  <div class="alert alert-warning" style="max-width:720px;">
+    <strong>Esto no se puede borrar:</strong> {{ protegido }} lo necesitan.
+    <p class="mb-0 mt-2 small">
+      No es un error: el sistema protege a propósito lo que quedaría huérfano.
+      {% if ficha.se_puede_dar_de_baja %}Dalo de baja: deja de aparecer y no se
+      pierde nada.{% else %}Quita primero lo que depende de él.{% endif %}
+    </p>
+  </div>
+{% elif arrastra %}
+  <div class="alert alert-danger" style="max-width:720px;">
+    <strong>Esto también borra {{ arrastra }}.</strong>
+    <p class="mb-0 mt-2 small">
+      No se puede deshacer. Si lo que quieres es que deje de aparecer,
+      {% if ficha.se_puede_dar_de_baja %}da de baja en vez de borrar{% else %}
+      quizá convenga dejarlo{% endif %}: el historial del colegio es el
+      registro oficial.
+    </p>
+  </div>
+{% else %}
+  <div class="alert alert-warning" style="max-width:720px;">
+    No hay nada colgando de este registro: borrarlo no se lleva nada más.
+  </div>
+{% endif %}
+
+<div class="d-flex flex-wrap gap-2 align-items-start">
+  {% if not protegido %}
+  <form method="post" class="card shadow-sm border-danger" style="max-width:420px;">
+    {% csrf_token %}
+    <div class="card-body">
+      {% if arrastra %}
+        <label class="form-label" for="confirmacion">
+          Para borrar, escribe <strong>BORRAR</strong>
+        </label>
+        <input type="text" class="form-control" id="confirmacion" name="confirmacion"
+               style="max-width:12rem;" autocomplete="off" required>
+      {% else %}
+        <p class="mb-0">¿Borrar <strong>{{ nombre }}</strong>?</p>
+      {% endif %}
+      <button type="submit" class="btn btn-danger mt-3">Borrar</button>
+      <a href="{% url 'datos:lista' ficha.clave %}" class="btn btn-outline-secondary mt-3">Cancelar</a>
+    </div>
+  </form>
+  {% else %}
+  <a href="{% url 'datos:lista' ficha.clave %}" class="btn btn-outline-secondary">Volver</a>
+  {% endif %}
+
+  {% if ficha.se_puede_dar_de_baja and not de_baja %}
+  <form method="post" action="{% url 'datos:baja' ficha.clave objeto.pk %}"
+        class="card shadow-sm" style="max-width:420px;">
+    {% csrf_token %}
+    <div class="card-body">
+      <div class="h6">Dar de baja, en vez de borrar</div>
+      <p class="small text-muted mb-0">{{ ficha.texto_baja }}</p>
+      <button type="submit" class="btn btn-outline-primary mt-3">Dar de baja</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

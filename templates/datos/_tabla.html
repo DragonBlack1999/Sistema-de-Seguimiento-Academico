@@ -10,6 +10,7 @@
         <tr>
             {% for columna in ficha.columnas %}<th>{{ columna.rotulo }}</th>{% endfor %}
             {% if ficha.tiene_estado %}<th>Estado</th>{% endif %}
+            {% if ficha.se_puede_escribir %}<th class="text-end">Acciones</th>{% endif %}
         </tr>
     </thead>
     <tbody>
@@ -27,15 +28,42 @@
                 {% endif %}
             </td>
             {% endif %}
+            {% if ficha.se_puede_escribir %}
+            <td class="text-end" data-rotulo="Acciones">
+                {% comment %}
+                  Dar de baja y borrar van por POST, nunca por enlace: un
+                  enlace lo sigue cualquier cosa que recorra la pagina.
+                {% endcomment %}
+                <a class="btn btn-sm btn-outline-primary"
+                   href="{% url 'datos:editar' ficha.clave fila.objeto.pk %}">Editar</a>
+                {% if ficha.se_puede_dar_de_baja %}
+                <form method="post" class="d-inline"
+                      action="{% if fila.de_baja %}{% url 'datos:alta' ficha.clave fila.objeto.pk %}{% else %}{% url 'datos:baja' ficha.clave fila.objeto.pk %}{% endif %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="volver" value="datos:lista">
+                    {% if fila.de_baja %}
+                        <button class="btn btn-sm btn-outline-success">Dar de alta</button>
+                    {% else %}
+                        <button class="btn btn-sm btn-outline-secondary">Dar de baja</button>
+                    {% endif %}
+                </form>
+                {% endif %}
+                <a class="btn btn-sm btn-outline-danger"
+                   href="{% url 'datos:eliminar' ficha.clave fila.objeto.pk %}">Borrar</a>
+            </td>
+            {% endif %}
         </tr>
         {% empty %}
         <tr>
-            <td colspan="{{ ficha.columnas|length|add:1 }}" class="text-center text-muted py-4">
+            <td colspan="{{ ficha.columnas|length|add:2 }}" class="text-center text-muted py-4">
                 {% if hay_filtros_puestos %}
                     No se encontró nada con esa búsqueda.
                     <a href="{% url 'datos:lista' ficha.clave %}">Ver todo</a>.
                 {% else %}
                     Todavía no hay {{ ficha.titulo|lower }} cargados.
+                    {% if ficha.se_puede_escribir %}
+                      <a href="{% url 'datos:nuevo' ficha.clave %}">Agregar el primero</a>.
+                    {% endif %}
                 {% endif %}
             </td>
         </tr>

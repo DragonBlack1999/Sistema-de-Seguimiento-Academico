@@ -9,7 +9,14 @@
         <h2 class="mb-1">{{ ficha.titulo }}</h2>
         <p class="text-muted mb-0">{{ ficha.descripcion }}</p>
     </div>
-    <a href="{% url 'datos:indice' %}" class="btn btn-outline-secondary">Volver a gestión de datos</a>
+    <div class="d-flex flex-wrap gap-2">
+        {% if ficha.se_puede_escribir %}
+        <a href="{% url 'datos:nuevo' ficha.clave %}" class="btn btn-primary">
+            {{ ficha.articulo }} {{ ficha.singular }}
+        </a>
+        {% endif %}
+        <a href="{% url 'datos:indice' %}" class="btn btn-outline-secondary">Volver a gestión de datos</a>
+    </div>
 </div>
 
 {% if ficha.tiene_buscador or desplegables %}

@@ -52,6 +52,14 @@ if not defined PUERTO (
     exit /b 1
 )
 
+rem --------------------------------------------- el dia en que se muestra
+rem  Los datos se generaron una vez y se guardaron; la demostracion se abre
+rem  otro dia. Sin esto, la primera pantalla dice "han entrado 0 de 402" y el
+rem  colegio aparece como si no hubiera abierto. Esto deja el dia a media
+rem  manana. No hace nada si el dia ya tiene asistencia.
+echo   Poniendo el dia al dia...
+"%PY%" manage.py demo_al_dia
+
 echo.
 echo   ================================================================
 echo    SISTEMA DE SEGUIMIENTO ACADEMICO

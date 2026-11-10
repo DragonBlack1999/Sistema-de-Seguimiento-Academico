@@ -20,3 +20,6 @@ respaldos/
 # La configuracion de la demostracion lleva la contrasena de PostgreSQL de
 # esa computadora: se genera ahi y no viaja con el codigo.
 demo/configuracion.bat
+
+# El paquete para el pendrive se arma cuando hace falta; no se versiona.
+demo_para_usb.zip

@@ -42,6 +42,16 @@ class Command(BaseCommand):
         parser.add_argument('--dias', type=int, default=15,
                             help='Cuántos días de clase de asistencia generar.')
         parser.add_argument('--semilla', type=int, default=2026)
+        parser.add_argument(
+            '--cursos', choices=['muestra', 'todos'], default='muestra',
+            help='«muestra» llena un curso de cada ciclo (rápido, alcanza para '
+                 'probar); «todos» llena los dieciocho (para mostrar el sistema).',
+        )
+        parser.add_argument(
+            '--trimestres', type=int, choices=[1, 2, 3], default=2,
+            help='Hasta qué trimestre cargar. Con 2, el segundo va a medias, '
+                 'que es como se ve un colegio a mitad de año.',
+        )
 
     def handle(self, *args, **opciones):
         base = settings.DATABASES['default']['NAME']
@@ -51,7 +61,12 @@ class Command(BaseCommand):
             raise CommandError(str(error))
 
         self.azar = random.Random(opciones['semilla'])
-        self.stdout.write(f'Llenando «{base}» con datos de ejemplo…')
+        self.cursos = self._cursos_a_llenar(opciones['cursos'])
+        self.hasta_trimestre = opciones['trimestres']
+        self.stdout.write(
+            f'Llenando «{base}» con datos de ejemplo '
+            f'({len(self.cursos)} curso(s), hasta el trimestre {self.hasta_trimestre})…'
+        )
 
         with transaction.atomic():
             self._familias()
@@ -62,6 +77,14 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             'Listo. Para que además haya avisos pendientes: manage.py alertas_diarias'
         ))
+
+    def _cursos_a_llenar(self, cuales):
+        """Los (grado, paralelo) que van a quedar con las planillas llenas."""
+        from apps.academico.models import Curso
+
+        if cuales == 'muestra':
+            return list(CURSOS_CON_NOTAS)
+        return sorted({(c.grado, c.paralelo) for c in Curso.objects.all()})
 
     # ─────────────────────────────── familias ────────────────────────────────
 
@@ -157,13 +180,12 @@ class Command(BaseCommand):
         from apps.academico.models import AsignacionDocente, Matricula
         from apps.calificaciones.demo import cargar_trimestre
 
-        asignaciones = list(
-            AsignacionDocente.objects.filter(
-                curso__grado__in=[g for g, _ in CURSOS_CON_NOTAS],
-                curso__paralelo__in=[p for _, p in CURSOS_CON_NOTAS],
-            ).select_related('curso', 'materia', 'profesor')
-        )
-        asignaciones = [a for a in asignaciones if (a.curso.grado, a.curso.paralelo) in CURSOS_CON_NOTAS]
+        elegidos = set(self.cursos)
+        asignaciones = [
+            a for a in AsignacionDocente.objects
+            .select_related('curso', 'materia', 'profesor')
+            if (a.curso.grado, a.curso.paralelo) in elegidos
+        ]
 
         por_curso = {}
         for matricula in Matricula.objects.filter(activa=True).select_related('estudiante'):
@@ -178,14 +200,26 @@ class Command(BaseCommand):
                 cargar_trimestre(asignacion, estudiante, 1, base, self.azar,
                                  registrado_por=asignacion.profesor)
                 cuantas += 1
-                if self.azar.random() < 0.6:    # el segundo trimestre va a medias
-                    segundo = min(100, max(25, base + self.azar.randint(-8, 10)))
-                    cargar_trimestre(asignacion, estudiante, 2, segundo, self.azar,
+
+                # Los trimestres siguientes se mueven alrededor del primero: un
+                # estudiante no cambia de nivel de un trimestre al otro, y si
+                # las notas fueran independientes el boletín no se parecería al
+                # de nadie.
+                anterior = base
+                for trimestre in range(2, self.hasta_trimestre + 1):
+                    # El último pedido va a medias: así se ve un colegio a
+                    # mitad de trimestre, con planillas a medio llenar.
+                    if trimestre == self.hasta_trimestre and self.azar.random() >= 0.6:
+                        continue
+                    anterior = min(100, max(25, anterior + self.azar.randint(-8, 10)))
+                    cargar_trimestre(asignacion, estudiante, trimestre, anterior, self.azar,
                                      registrado_por=asignacion.profesor)
                     cuantas += 1
 
-        cursos = ', '.join(f'{g}° {p}' for g, p in CURSOS_CON_NOTAS)
-        self.stdout.write(f'  Notas: {cuantas} trimestres cargados en {cursos}.')
+        cuantos = len(self.cursos)
+        donde = (', '.join(f'{g}° {p}' for g, p in self.cursos) if cuantos <= 4
+                 else f'los {cuantos} cursos')
+        self.stdout.write(f'  Notas: {cuantas} trimestres cargados en {donde}.')
 
     # ──────────────────────────────── tareas ─────────────────────────────────
 
@@ -195,10 +229,21 @@ class Command(BaseCommand):
         from apps.tareas.models import EntregaTarea, Tarea
         from apps.tareas import notas as notas_de_tareas
 
+        elegidos = set(self.cursos)
         asignaciones = [
             a for a in AsignacionDocente.objects.select_related('curso', 'materia', 'profesor')
-            if (a.curso.grado, a.curso.paralelo) in CURSOS_CON_NOTAS
-        ][:6]
+            if (a.curso.grado, a.curso.paralelo) in elegidos
+        ]
+        # Dos materias por curso alcanzan: tres tareas en cada una de las trece
+        # materias de los dieciocho cursos son setecientas tareas que nadie mira.
+        por_curso = {}
+        acotadas = []
+        for asignacion in asignaciones:
+            cuantas_ya = por_curso.get(asignacion.curso_id, 0)
+            if cuantas_ya < 2:
+                por_curso[asignacion.curso_id] = cuantas_ya + 1
+                acotadas.append(asignacion)
+        asignaciones = acotadas
 
         hoy = timezone.localdate()
         creadas, entregas = 0, 0

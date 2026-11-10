@@ -16,3 +16,7 @@ respaldos/
 .claude/settings.local.json
 .claude/*.lock
 ~$*
+
+# La configuracion de la demostracion lleva la contrasena de PostgreSQL de
+# esa computadora: se genera ahi y no viaja con el codigo.
+demo/configuracion.bat

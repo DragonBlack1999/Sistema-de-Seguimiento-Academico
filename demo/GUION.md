@@ -17,6 +17,9 @@ Si el navegador no abre solo, escribe en él: `127.0.0.1:8080`
 > estarías mostrando la base del colegio en vez de la demostración. La ventana
 > negra dice siempre cuál es la dirección buena.
 
+Si quieres dormir tranquilo: **`demo\revisar.bat`** recorre las 35 pantallas
+con las seis cuentas y tiene que terminar en **«fallos: 0»**.
+
 ---
 
 ## Credenciales
@@ -37,8 +40,8 @@ Si el navegador no abre solo, escribe en él: `127.0.0.1:8080`
 
 ## El recorrido (12 minutos)
 
-Cada bloque dice **qué abrir**, **qué decir** y **qué mirar**. Si vas corto de
-tiempo, los marcados con ★ son los que muestran trabajo nuevo.
+El orden importa: el **paso 2** deja un pedido pendiente que reaparece solo en
+el **paso 5**. Si vas corto de tiempo, los marcados con ★ son lo nuevo.
 
 ### 1 · Quién entra y cómo (1 min)
 
@@ -50,7 +53,19 @@ tiempo, los marcados con ★ son los que muestran trabajo nuevo.
 
 Toca los cuatro botones y muestra cómo cambian las etiquetas y las ayudas.
 
-### 2 · ★ Lo que pediste la vez pasada (2 min)
+### 2 · ★ Alguien olvidó su contraseña (1 min)
+
+Sigues sin iniciar sesión. Clic en **¿Olvidaste tu contraseña?** →
+escribe `gquispe` → **Pedir mi contraseña**.
+
+> «No se restablece solo. El carnet de identidad no es un secreto: está en la
+> carpeta de cada estudiante y en la libreta. Si bastara con pedirlo,
+> cualquiera que conozca el carnet de otro entraría con su cuenta. El pedido
+> va a secretaría, que es quien conoce a la persona.»
+
+**Deja el pedido ahí.** Vuelve a aparecer en el paso 5.
+
+### 3 · ★ Lo que pediste la vez pasada (2 min)
 
 **Entra como `admin`** → menú **Más → Gestionar datos → Estudiantes**.
 
@@ -62,7 +77,7 @@ Toca los cuatro botones y muestra cómo cambian las etiquetas y las ayudas.
   antes era una caja de texto donde había que adivinar el formato; ahora abre
   el calendario y no deja elegir el futuro.
 
-### 3 · ★ Gestión de datos completa (2 min)
+### 4 · ★ Gestión de datos completa (2 min)
 
 Sigue en la misma pantalla.
 
@@ -83,25 +98,36 @@ Sigue en la misma pantalla.
 
 **No confirmes el borrado.** Cancela.
 
-### 4 · ★ El panel de cada rol (3 min)
+### 5 · ★ El panel de cada rol (3 min)
 
-Esto es lo que más se nota. **Sal y entra con cada uno**, 40 segundos cada uno:
+Esto es lo que más se nota.
 
-- **`myujra` (regencia)** → su panel. Los 18 cursos con cuánta gente falta por
-  entrar, de peor a mejor; quiénes se acercan al umbral de faltas; cómo viene
-  la semana. Toca un curso: abre la lista de ese curso en el control de entrada.
+**Primero el de dirección** — toca **Inicio**:
+
+- La asistencia del día, el promedio del colegio, las citaciones pendientes.
+- Y **«Esperando a alguien»**: ahí está el pedido de contraseña del paso 2, con
+  su botón **Atender**. La campanita de arriba también lo tiene.
+
+> «El panel dejó de mostrar datos y pasó a mostrar pendientes: lo que está
+> trabado, con el botón para ir a destrabarlo.»
+
+Puedes entrar a **Atender** y mostrar la bandeja, **sin restablecer nada**.
+
+**Ahora sal y entra con cada uno**, 40 segundos cada uno:
+
+- **`myujra` (regencia)** → los 18 cursos con cuánta gente falta por entrar, de
+  peor a mejor; quiénes se acercan al umbral de faltas; cómo viene la semana.
+  Toca un curso: abre la lista de ese curso en el control de entrada.
 - **`gquispe` (docente)** → sus clases de hoy, y por cada materia el promedio
   del trimestre, cuántos están debajo de 51 y qué entregas le esperan.
 - **`999900000000001` (estudiante)** → su promedio, **materia por materia**,
   las que van mal primero.
-- **`admin`** → asistencia del día, promedio del colegio, y «**esperando a
-  alguien**»: lo trabado, con el botón para ir a destrabarlo.
 
 > «Antes cada panel mostraba lo que su dueño ya sabía de memoria: su nombre y
 > la lista de sus materias. Ahora muestra lo que no sabe y lo que tiene que
 > hacer.»
 
-### 5 · ★ El horario, impreso (1 min)
+### 6 · ★ El horario, impreso (1 min)
 
 **Como `gquispe`** → **Horario** → botón **Imprimir** → en el diálogo elige
 **Guardar como PDF**.
@@ -111,21 +137,9 @@ Esto es lo que más se nota. **Sal y entra con cada uno**, 40 segundos cada uno:
 
 Muestra la vista previa y **cancela** (no hace falta imprimir de verdad).
 
-### 6 · ★ Contraseñas (1 min)
-
-**Sal.** En la portada, **¿Olvidaste tu contraseña?** → escribe `gquispe` →
-enviar.
-
-> «No se restablece solo: el carnet no es un secreto, está en la carpeta de
-> cada estudiante. El pedido llega a secretaría, que es quien conoce a la
-> persona.»
-
-**Entra como `admin`** → la campanita tiene un aviso → **Pedidos de contraseña**
-→ se ve el pedido esperando. **No lo atiendas**, solo muéstralo.
-
 ### 7 · ★ Cerrar el año escolar (2 min)
 
-**Como `admin`** → **Más → Cerrar el año escolar**.
+**Entra como `admin`** → **Más → Cerrar el año escolar**.
 
 > «Es la operación más grande del sistema y la única que no se deshace: mueve
 > de grado a los 402 estudiantes de una vez.»
@@ -152,6 +166,7 @@ Muestra, sin confirmar:
 | La ventana negra se cerró | Vuelve a abrir `demo\demo.bat`. |
 | «Esa página no existe» | Vuelve a `127.0.0.1:8080` y entra de nuevo. |
 | Cerraste la sesión sin querer | Las credenciales están arriba. |
+| Se ve sin colores ni formato | Cierra la ventana negra y vuelve a correr `demo\instalar_demo.bat`. |
 | **Confirmaste el cierre de año sin querer** | No pasa nada grave: es una base de demostración. Para dejarla como estaba, corre otra vez `demo\instalar_demo.bat`. |
 
 ---

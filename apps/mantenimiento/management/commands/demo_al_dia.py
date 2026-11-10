@@ -58,15 +58,68 @@ class Command(BaseCommand):
             self.stdout.write('Hoy es domingo: en la puerta no hay nada que registrar.')
             return
 
-        if Asistencia.objects.filter(fecha=hoy).exists():
-            cuantas = Asistencia.objects.filter(fecha=hoy).count()
-            self.stdout.write(f'El día ya tiene {cuantas} marca(s): no se toca nada.')
-            return
-
         azar = random.Random(opciones['semilla'] if opciones['semilla'] is not None
                              else hoy.toordinal())
-        self._marcar_el_dia(gestion, hoy, azar)
+
+        # Los días sueltos se rellenan siempre, aunque hoy ya esté marcado: el
+        # hueco que deja la generación está DETRÁS de hoy, no en hoy.
+        self._dias_que_faltan(gestion, hoy, azar)
+
+        ya = Asistencia.objects.filter(fecha=hoy).count()
+        if ya:
+            self.stdout.write(f'  Puerta de hoy: ya tenía {ya} marca(s), no se toca.')
+        else:
+            self._marcar_el_dia(gestion, hoy, azar)
+
         self._citaciones_pendientes(gestion)
+
+    @transaction.atomic
+    def _dias_que_faltan(self, gestion, hoy, azar):
+        """Los días de clase recientes que quedaron sin registrar.
+
+        Entre el día en que se generaron los datos y el día en que se muestra
+        la demostración pasan fechas. Cada una de ellas aparece en el panel de
+        dirección como «Urgente: sin asistencia registrada», que no es una
+        historia del colegio: es un hueco de la generación.
+        """
+        from apps.accounts.models import Usuario
+        from apps.asistencia.models import Asistencia
+        from apps.asistencia.services import matriculas_del_dia
+
+        regente = Usuario.objects.filter(rol=Usuario.Rol.REGENTE).first()
+        con_registro = set(
+            Asistencia.objects.filter(fecha__lt=hoy, fecha__gte=hoy - datetime.timedelta(days=10))
+            .values_list('fecha', flat=True)
+        )
+
+        filas = []
+        dias = 0
+        for atras in range(1, 11):
+            fecha = hoy - datetime.timedelta(days=atras)
+            if fecha.weekday() == 6 or fecha in con_registro:
+                continue
+            dias += 1
+            for matricula in matriculas_del_dia(gestion, fecha):
+                suerte = azar.random()
+                if suerte < 0.045:
+                    estado, hora = Asistencia.Estado.FALTA, None
+                elif suerte < 0.115:
+                    estado = Asistencia.Estado.ATRASO
+                    hora = datetime.time(13, azar.randint(51, 59))
+                else:
+                    estado = Asistencia.Estado.PRESENTE
+                    hora = datetime.time(13, azar.randint(25, 49))
+                filas.append(Asistencia(
+                    estudiante_id=matricula.estudiante_id, fecha=fecha,
+                    hora_llegada=hora, estado=estado, registrado_por=regente,
+                ))
+
+        if filas:
+            Asistencia.objects.bulk_create(filas, batch_size=1000, ignore_conflicts=True)
+            self.stdout.write(
+                f'  Días sueltos: {dias} día(s) de clase que habían quedado sin '
+                f'registrar, {len(filas)} marcas.'
+            )
 
     @transaction.atomic
     def _marcar_el_dia(self, gestion, hoy, azar):

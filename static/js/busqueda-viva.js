@@ -109,8 +109,11 @@
       campo.addEventListener('input', programar);
     });
     formulario.querySelectorAll('select').forEach(function (campo) {
-      // Los desplegables ya no necesitan recargar la página entera.
-      campo.removeAttribute('onchange');
+      // Los desplegables ya no necesitan recargar la página entera. Se les
+      // quita `data-autoenvio`, que es con lo que `acciones.js` los envía:
+      // si no, un solo cambio de filtro pedía la tabla dos veces, una por
+      // este oyente y otra por el envío que aquel provoca.
+      campo.removeAttribute('data-autoenvio');
       campo.addEventListener('change', pedir);
     });
     /* Los botones de opción (los cursos de la puerta) son una elección, no algo

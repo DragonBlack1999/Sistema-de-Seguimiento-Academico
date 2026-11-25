@@ -3,11 +3,16 @@
 import datetime
 
 from django.conf import settings
+from django.utils import timezone
 
 from apps.academico.clases import DIA_POR_WEEKDAY
-from apps.academico.models import Curso, Gestion, Horario, Matricula
+from apps.academico.models import Curso, Gestion, Matricula
 
 from .models import Asistencia
+
+
+class RegistroNoValido(ValueError):
+    """La fecha o el estudiante no corresponden a la jornada."""
 
 
 def hora_limite():
@@ -44,15 +49,37 @@ def cursos_en_capacitacion(fecha):
     return Curso.objects.filter(dias_capacitacion__dia=dia).distinct()
 
 
+def error_de_fecha(gestion, fecha, *, puerta=True):
+    if gestion is None or not gestion.activa:
+        return 'No hay una gestión activa para registrar asistencia.'
+    if (fecha.year != gestion.anio
+            or (gestion.fecha_inicio and fecha < gestion.fecha_inicio)
+            or (gestion.fecha_fin and fecha > gestion.fecha_fin)):
+        return f'La fecha está fuera de la gestión escolar {gestion.anio}.'
+    if puerta and fecha.weekday() not in DIA_POR_WEEKDAY:
+        return 'Ese día no hay ingreso por la puerta del colegio.'
+    return ''
+
+
 def matriculas_del_dia(gestion, fecha):
     """Estudiantes que deben pasar por la puerta ese día.
 
     Excluye a los cursos en capacitación: si no, "cerrar el día" les pondría
     falta a todos cada semana, porque nunca pasan por la puerta ese día.
     """
+    if error_de_fecha(gestion, fecha):
+        return Matricula.objects.none()
+    # OJO con `fecha_matricula`: el corte es correcto —quien se inscribió el
+    # martes no estaba el lunes— pero el campo es `auto_now_add`, así que
+    # guarda cuándo se tecleó la matrícula, no cuándo se inscribió el alumno.
+    # Las 402 del colegio se cargaron todas el 14/09/2026: para cualquier
+    # fecha anterior a esa carga, esta lista sale vacía. Mientras el campo no
+    # sea una fecha de inscripción de verdad (editable y rellenada hacia
+    # atrás), no conviene mirar días previos a la carga de datos.
     return (
         Matricula.objects
-        .filter(curso__gestion=gestion, activa=True)
+        .filter(curso__gestion=gestion, activa=True, estudiante__usuario__is_active=True,
+                fecha_matricula__lte=fecha)
         .exclude(curso__in=cursos_en_capacitacion(fecha))
         .select_related('estudiante__usuario', 'curso')
         .order_by('curso__nivel', 'curso__grado', 'curso__paralelo',
@@ -60,19 +87,25 @@ def matriculas_del_dia(gestion, fecha):
     )
 
 
-def registrar_entrada(estudiante, gestion, fecha, usuario, hora=None):
+def registrar_entrada(estudiante, gestion, fecha, usuario, hora=None, *, estado=None):
     """Marca la entrada de un estudiante. Devuelve (asistencia, creada).
 
     La gestión no se guarda en el registro: es el año de la fecha. El parámetro
     se mantiene porque las vistas ya la tienen y sirve para no aceptar marcas de
     otro año escolar.
     """
-    hora = hora or datetime.datetime.now().time().replace(microsecond=0)
+    error = error_de_fecha(gestion, fecha)
+    if error:
+        raise RegistroNoValido(error)
+    if not matriculas_del_dia(gestion, fecha).filter(estudiante=estudiante).exists():
+        raise RegistroNoValido('El estudiante no está en la lista de ingreso de ese día.')
+    hora = hora or timezone.localtime().time().replace(microsecond=0)
+    estado = estado or estado_por_hora(hora)
     return Asistencia.objects.update_or_create(
         estudiante=estudiante, fecha=fecha,
         defaults={
-            'hora_llegada': hora,
-            'estado': estado_por_hora(hora),
+            'hora_llegada': hora if estado in (Asistencia.Estado.PRESENTE, Asistencia.Estado.ATRASO) else None,
+            'estado': estado,
             'registrado_por': usuario,
         },
     )
@@ -84,6 +117,9 @@ def cerrar_dia(gestion, fecha, usuario):
     Es el paso que cierra la puerta: hasta entonces "sin registro" significa
     "todavía puede llegar", no "faltó".
     """
+    error = error_de_fecha(gestion, fecha)
+    if error:
+        raise RegistroNoValido(error)
     ya_registrados = set(
         Asistencia.objects.filter(fecha=fecha).values_list('estudiante_id', flat=True)
     )

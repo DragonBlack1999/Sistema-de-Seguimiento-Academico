@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import EntregaTarea, Tarea
+from .notas import guardar_con_planilla
 
 
 @admin.register(Tarea)
@@ -17,6 +18,10 @@ class TareaAdmin(admin.ModelAdmin):
     date_hierarchy = 'fecha_entrega'
     ordering = ('-fecha_entrega',)
     list_per_page = 50
+    readonly_fields = ('actividad',)
+
+    def save_model(self, request, obj, form, change):
+        guardar_con_planilla(obj, request.user)
 
 
 @admin.register(EntregaTarea)

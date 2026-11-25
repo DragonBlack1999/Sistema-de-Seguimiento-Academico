@@ -77,7 +77,7 @@
 
     <button type="submit" class="btn btn-primary">Guardar notas</button>
     <button type="submit" name="accion" value="cero_no_entregados" class="btn btn-outline-danger"
-            onclick="return confirm('¿Poner 0 a todos los que no entregaron y aún no tienen nota?');">
+            data-confirmar="¿Poner 0 a todos los que no entregaron y aún no tienen nota?">
         Poner 0 a los no entregados
     </button>
     <a href="{% url 'tareas:lista_tareas' tarea.asignacion_id %}" class="btn btn-outline-secondary">Volver</a>
@@ -103,7 +103,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // Se espera a DOMContentLoaded: este bloque va antes del script de Bootstrap.
 document.addEventListener('DOMContentLoaded', function () {
   const contenedor = document.getElementById('visorEntrega');

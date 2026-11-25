@@ -4,6 +4,7 @@ Django settings for config project.
 
 from pathlib import Path
 from decouple import config, Csv
+from django.utils.csp import CSP
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -94,6 +95,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Le dice al navegador de dónde puede cargar cada cosa (ver SECURE_CSP).
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -108,6 +111,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # Pone {{ csp_nonce }} en las plantillas, para los <script> escritos en la página.
+                'django.template.context_processors.csp',
                 'apps.notificaciones.context_processors.notificaciones',
                 'apps.mensajeria.context_processors.mensajeria',
             ],
@@ -234,6 +239,37 @@ if EN_LA_NUBE:
     # Un turno de clases dura menos que esto; obliga a entrar de nuevo al día
     # siguiente, que es lo razonable en computadoras compartidas.
     SESSION_COOKIE_AGE = config('SESSION_COOKIE_AGE', default=8 * 60 * 60, cast=int)
+
+
+# Política de seguridad de contenido (CSP)
+# Le dice al navegador de dónde puede cargar cada cosa. Si alguien lograra
+# meter un <script> en un nombre, un mensaje o una tarea, el navegador no lo
+# correría: solo corren los archivos de /static/ y los <script> de las
+# plantillas, que llevan nonce="{{ csp_nonce }}" (una clave nueva en cada
+# página que un intruso no puede adivinar). Por eso las plantillas no usan
+# onclick="…" ni parecidos: lo hace static/js/acciones.js con data-confirmar,
+# data-autoenvio y data-imprimir.
+#
+# Los estilos sí se permiten escritos en la página: hay muchos style="…" y un
+# estilo no puede robar nada. Todo es del propio sitio —Bootstrap y la letra
+# Nunito viven en static/vendor—, así que funciona igual sin internet.
+SECURE_CSP = {
+    'default-src': [CSP.SELF],
+    'script-src': [CSP.SELF, CSP.NONCE],
+    'style-src': [CSP.SELF, CSP.UNSAFE_INLINE],
+    # data: lo usa Bootstrap para las flechitas de los desplegables.
+    'img-src': [CSP.SELF, 'data:', 'blob:'],
+    'font-src': [CSP.SELF],
+    'connect-src': [CSP.SELF],
+    'worker-src': [CSP.SELF],
+    'manifest-src': [CSP.SELF],
+    # El visor de entregas del profesor muestra el archivo dentro de la página.
+    'frame-src': [CSP.SELF],
+    'frame-ancestors': [CSP.SELF],
+    'object-src': [CSP.NONE],
+    'base-uri': [CSP.SELF],
+    'form-action': [CSP.SELF],
+}
 
 
 # Registro

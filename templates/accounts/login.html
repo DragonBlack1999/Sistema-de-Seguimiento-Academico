@@ -84,6 +84,15 @@
     color: var(--sa-tinta); background: #eafaf7;
   }
   .sa-ayuda { font-size: .76rem; color: var(--sa-suave); margin: 5px 0 0; }
+  .sa-clave { position: relative; }
+  .sa-clave input { padding-right: 3rem; }
+  .sa-clave input::-ms-reveal { display: none; }
+  .sa-ojo {
+    position: absolute; inset: 1px 1px 1px auto; width: 2.75rem;
+    border: 0; border-radius: var(--sa-radio-s); background: transparent; color: var(--sa-tinta);
+  }
+  .sa-ojo:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+  .sa-clave input[type="password"] + .sa-ojo .sa-tacha { display: none; }
 
   /* Visión y misión: en la columna blanca, para dejar la fotografía despejada. */
   .sa-institucional { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--sa-borde); display: grid; gap: 14px; }
@@ -127,8 +136,12 @@
 
       {% if form.errors %}
         <div class="alert alert-danger py-2 mb-3">
+          {% if form.bloqueado %}
+          {{ form.non_field_errors.0 }}
+          {% else %}
           Usuario o contraseña incorrectos. Revisa que estés escribiendo lo que pide el
           botón que elegiste arriba.
+          {% endif %}
         </div>
       {% endif %}
 
@@ -160,7 +173,18 @@
         </div>
         <div class="mb-4">
           <label class="form-label" id="rotuloClave" for="{{ form.password.id_for_label }}">Tu contraseña</label>
-          {{ form.password }}
+          <div class="sa-clave">
+            {{ form.password }}
+            <button type="button" class="sa-ojo" id="verClave" hidden
+                    aria-controls="{{ form.password.id_for_label }}" aria-label="Mostrar contraseña" title="Mostrar contraseña">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/>
+                <circle cx="12" cy="12" r="3"/>
+                <path class="sa-tacha" d="M3 3l18 18"/>
+              </svg>
+            </button>
+          </div>
           {% comment %}
             Ya no dice «tu carnet» a secas: desde que cualquiera puede poner una
             contraseña suya, el carnet deja de servirle en cuanto lo hace, y el
@@ -213,7 +237,7 @@
   Los botones solo cambian los rótulos: el formulario se envía siempre al mismo
   sitio, así que quien pulse el botón equivocado entra igual.
 {% endcomment %}
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function () {
   const ROLES = {
     estudiante: {
@@ -248,6 +272,16 @@ document.addEventListener('DOMContentLoaded', function () {
   const rotuloClave = document.getElementById('rotuloClave');
   const ayudaClave = document.getElementById('ayudaClave');
   const campoUsuario = document.getElementById('{{ form.username.id_for_label }}');
+  const verClave = document.getElementById('verClave');
+  const campoClave = document.getElementById(verClave.getAttribute('aria-controls'));
+  verClave.hidden = false;
+  verClave.addEventListener('click', function () {
+    const mostrar = campoClave.type === 'password';
+    campoClave.type = mostrar ? 'text' : 'password';
+    const accion = mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña';
+    verClave.setAttribute('aria-label', accion);
+    verClave.title = accion;
+  });
 
   function elegir(rol, moverElFoco) {
     const textos = ROLES[rol];

@@ -62,7 +62,7 @@
 
 {% if con_buscador %}
 <script src="{% static_v 'js/sugerencias.js' %}"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   const campo = document.getElementById('buscadorContactos');
   const lista = document.getElementById('sugerenciasContactos');

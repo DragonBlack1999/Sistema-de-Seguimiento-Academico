@@ -6,6 +6,7 @@ app_name = 'asistencia'
 
 urlpatterns = [
     path('puerta/', views.puerta, name='puerta'),
+    path('puerta/excel/', views.puerta_excel, name='puerta_excel'),
     path('puerta/marcar/<int:estudiante_id>/', views.marcar, name='marcar'),
     path('puerta/cerrar/', views.cerrar, name='cerrar'),
     path('capacitacion/', views.capacitacion, name='capacitacion'),

@@ -1,9 +1,10 @@
 from decimal import Decimal, InvalidOperation
+from functools import partial
 from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.http import FileResponse, Http404, HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
@@ -18,7 +19,7 @@ from .forms import EntregaEstudianteForm, TareaForm
 from .models import EntregaTarea, Tarea
 from .notas import (
     MAXIMO_TAREA, borrar_actividad, entero_valido, guardar_puntaje, puntajes_de, recalcular,
-    sincronizar_actividad, sin_calificar,
+    guardar_con_planilla, sin_calificar,
 )
 from .validators import tipo_en_linea
 
@@ -152,15 +153,17 @@ def crear_tarea(request, asignacion_id):
             tarea.creado_por = request.user
             if request.FILES.get('archivo_adjunto'):
                 tarea.archivo_nombre = request.FILES['archivo_adjunto'].name
-            tarea.save()
-            # Cada tarea es una columna de "hacer": se crea junto con ella.
-            sincronizar_actividad(tarea, request.user)
-            messages.success(
-                request,
-                f'Tarea creada. Ya aparece en la planilla de notas, sobre {MAXIMO_TAREA:.0f} puntos.',
-            )
-            _notificar_tarea_nueva(tarea, excluir=request.user)
-            return redirect(_url_lista(asignacion.id, tarea.trimestre))
+            try:
+                guardar_con_planilla(tarea, request.user)
+            except (IntegrityError, OSError):
+                form.add_error(None, 'No se guardó la tarea. Revisa el título y el adjunto y vuelve a intentar.')
+            else:
+                transaction.on_commit(partial(_notificar_tarea_nueva, tarea, excluir=request.user), robust=True)
+                messages.success(
+                    request,
+                    f'Tarea creada. Ya aparece en la planilla de notas, sobre {MAXIMO_TAREA:.0f} puntos.',
+                )
+                return redirect(_url_lista(asignacion.id, tarea.trimestre))
     else:
         form = TareaForm()
 
@@ -183,11 +186,13 @@ def editar_tarea(request, tarea_id):
                 tarea.archivo_nombre = request.FILES['archivo_adjunto'].name
             elif not tarea.archivo_adjunto:
                 tarea.archivo_nombre = ''
-            tarea.save()
-            for trimestre in sincronizar_actividad(tarea, request.user):
-                recalcular(tarea.asignacion_id, trimestre, usuario=request.user)
-            messages.success(request, 'Tarea actualizada correctamente.')
-            return redirect(_url_lista(tarea.asignacion_id, tarea.trimestre))
+            try:
+                guardar_con_planilla(tarea, request.user)
+            except (IntegrityError, OSError):
+                form.add_error(None, 'No se guardaron los cambios de la tarea. Vuelve a intentar.')
+            else:
+                messages.success(request, 'Tarea actualizada correctamente.')
+                return redirect(_url_lista(tarea.asignacion_id, tarea.trimestre))
     else:
         form = TareaForm(instance=tarea)
 

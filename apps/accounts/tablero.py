@@ -12,9 +12,9 @@ Los cuatro bloques son:
 """
 
 import datetime
-from decimal import Decimal
+from collections import Counter, defaultdict
 
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, Exists, OuterRef
 from django.utils import timezone
 
 from apps.academico.models import AsignacionDocente, Curso, Matricula
@@ -22,7 +22,8 @@ from apps.asistencia.models import Asistencia
 from apps.asistencia.services import DIA_POR_WEEKDAY
 from apps.calificaciones.models import NOTA_APROBACION, Nota
 from apps.comunicaciones.models import Citacion
-from apps.tareas.models import EntregaTarea, Tarea
+from apps.tareas.models import EntregaTarea
+from apps.tareas.pendientes import tareas_vencidas_sin_entregar
 
 DIAS_DE_TENDENCIA = 24          # cuatro semanas de clase, de lunes a sábado
 LIMITE_ATENCION = 8             # cuántos estudiantes se listan
@@ -49,38 +50,33 @@ def necesitan_atencion(gestion):
     filas = []
     matriculas = (
         Matricula.objects.filter(activa=True, curso__gestion=gestion)
-        .select_related('estudiante__usuario', 'curso')
+        .select_related('estudiante__usuario', 'curso__gestion')
     )
 
+    faltas_por_estudiante = dict(Asistencia.objects.filter(
+        fecha__year=gestion.anio, estado=Asistencia.Estado.FALTA,
+    ).values_list('estudiante_id').annotate(total=Count('pk')))
+    citaciones_por_estudiante = dict(Citacion.objects.filter(
+        estado=Citacion.Estado.PENDIENTE,
+    ).values_list('estudiante_id').annotate(total=Count('pk')))
+
+    materias_reprobadas = defaultdict(list)
+    promedios_bajos = (
+        Nota.objects.calificadas().filter(asignacion__curso__gestion=gestion)
+        .values('estudiante_id', 'asignacion__materia__nombre')
+        .annotate(promedio=Avg('nota')).filter(promedio__lt=NOTA_APROBACION)
+        .order_by('asignacion__materia__nombre')
+    )
+    for fila in promedios_bajos:
+        materias_reprobadas[fila['estudiante_id']].append(fila['asignacion__materia__nombre'])
+
+    pendientes = Counter(m.pk for m, _ in tareas_vencidas_sin_entregar(gestion, matriculas))
     for matricula in matriculas:
         estudiante = matricula.estudiante
-
-        faltas = Asistencia.objects.filter(
-            estudiante=estudiante, fecha__year=gestion.anio, estado=Asistencia.Estado.FALTA,
-        ).count()
-
-        # Materias cuyo promedio está por debajo de la nota de aprobación
-        promedios = (
-            Nota.objects.calificadas().filter(estudiante=estudiante, asignacion__curso__gestion=gestion)
-            .values('asignacion__materia__nombre')
-            .annotate(promedio=Avg('nota'))
-        )
-        reprobadas = [p for p in promedios if p['promedio'] < NOTA_APROBACION]
-
-        citaciones = Citacion.objects.filter(
-            estudiante=estudiante, estado=Citacion.Estado.PENDIENTE,
-        ).count()
-
-        tareas_curso = Tarea.objects.filter(asignacion__curso=matricula.curso)
-        entregadas = set(
-            EntregaTarea.objects.filter(
-                estudiante=estudiante, tarea__in=tareas_curso,
-                estado__in=[EntregaTarea.Estado.ENTREGADA, EntregaTarea.Estado.ATRASADA],
-            ).values_list('tarea_id', flat=True)
-        )
-        sin_entregar = sum(
-            1 for t in tareas_curso if t.pk not in entregadas and t.fecha_entrega < timezone.localdate()
-        )
+        faltas = faltas_por_estudiante.get(estudiante.pk, 0)
+        citaciones = citaciones_por_estudiante.get(estudiante.pk, 0)
+        reprobadas = materias_reprobadas[estudiante.pk]
+        sin_entregar = pendientes[matricula.pk]
 
         puntos = faltas * 2 + len(reprobadas) * 5 + citaciones * 6 + sin_entregar * 2
         if puntos == 0:
@@ -90,7 +86,7 @@ def necesitan_atencion(gestion):
             'estudiante': estudiante,
             'curso': matricula.curso,
             'faltas': faltas,
-            'reprobadas': [p['asignacion__materia__nombre'] for p in reprobadas],
+            'reprobadas': reprobadas,
             'citaciones': citaciones,
             'sin_entregar': sin_entregar,
             'puntos': puntos,
@@ -108,26 +104,28 @@ def rendimiento_por_materia(gestion):
         .annotate(promedio=Avg('nota'), cuantas=Count('id'))
         .order_by('promedio')
     )
+    estudiantes = Counter()
+    reprobados = Counter()
+    por_estudiante = (
+        Nota.objects.calificadas().filter(asignacion__curso__gestion=gestion)
+        .values('asignacion__materia__nombre', 'estudiante_id').annotate(promedio=Avg('nota'))
+    )
+    for registro in por_estudiante:
+        materia = registro['asignacion__materia__nombre']
+        estudiantes[materia] += 1
+        if registro['promedio'] < NOTA_APROBACION:
+            reprobados[materia] += 1
     filas = []
     for fila in datos:
         promedio = float(fila['promedio'])
-        # Reprobados de esa materia: se cuenta por estudiante, no por nota suelta
-        por_estudiante = (
-            Nota.objects.calificadas().filter(
-                asignacion__curso__gestion=gestion,
-                asignacion__materia__nombre=fila['asignacion__materia__nombre'],
-            )
-            .values('estudiante')
-            .annotate(p=Avg('nota'))
-        )
-        reprobados = sum(1 for e in por_estudiante if e['p'] < NOTA_APROBACION)
+        materia = fila['asignacion__materia__nombre']
         filas.append({
             'materia': fila['asignacion__materia__nombre'],
             'promedio': round(promedio, 1),
             'porcentaje': round(promedio),          # la escala es 0-100, sirve de ancho
             'notas': fila['cuantas'],
-            'estudiantes': len(por_estudiante),
-            'reprobados': reprobados,
+            'estudiantes': estudiantes[materia],
+            'reprobados': reprobados[materia],
             'aprueba': promedio >= NOTA_APROBACION,
         })
     return filas
@@ -199,23 +197,20 @@ def pendientes(gestion):
                       'url_nombre': 'comunicaciones:lista_citaciones'})
 
     # Cursos sin ninguna nota registrada este año
-    sin_notas = []
-    for curso in Curso.objects.filter(gestion=gestion):
-        if not Matricula.objects.filter(curso=curso, activa=True).exists():
-            continue
-        if not Nota.objects.calificadas().filter(asignacion__curso=curso).exists():
-            sin_notas.append(str(curso))
+    cursos = Curso.objects.filter(gestion=gestion).filter(
+        Exists(Matricula.objects.filter(curso=OuterRef('pk'), activa=True))
+    ).select_related('gestion').annotate(
+        tiene_notas=Exists(Nota.objects.calificadas().filter(asignacion__curso=OuterRef('pk'))),
+        tiene_horario=Exists(AsignacionDocente.objects.filter(curso=OuterRef('pk'), horarios__isnull=False)),
+    )
+    sin_notas = [str(curso) for curso in cursos if not curso.tiene_notas]
     if sin_notas:
         lista.append({'tono': 'atencion',
                       'texto': f"Sin notas registradas todavía: {', '.join(sin_notas)}.",
                       'url_nombre': None})
 
     # Cursos sin horario armado
-    sin_horario = [
-        str(c) for c in Curso.objects.filter(gestion=gestion)
-        if Matricula.objects.filter(curso=c, activa=True).exists()
-        and not AsignacionDocente.objects.filter(curso=c, horarios__isnull=False).exists()
-    ]
+    sin_horario = [str(curso) for curso in cursos if not curso.tiene_horario]
     if sin_horario:
         lista.append({'tono': 'dato',
                       'texto': f"Sin horario armado: {', '.join(sin_horario)}.",

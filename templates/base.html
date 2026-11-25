@@ -3,6 +3,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <script src="{% static_v 'js/sesion-formulario.js' %}" defer
+            data-sesion="{% url 'accounts:sesion_formulario' %}" data-usuario="{{ user.pk|default_if_none:'' }}"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#2ec4b6">
     <title>{% block titulo %}Sistema de Seguimiento Académico{% endblock %} · U.E. Eduardo Abaroa Tarde</title>
@@ -206,6 +208,7 @@
     {% endblock %}
 
     <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static_v 'js/acciones.js' %}"></script>
     {% if user.is_authenticated %}<script src="{% static_v 'js/avisos.js' %}"></script>{% endif %}
     {% block scripts %}{% endblock %}
 </body>

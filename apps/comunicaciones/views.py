@@ -1,7 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from apps.academico.busqueda import buscar_estudiantes
 from apps.academico.models import Estudiante
@@ -55,11 +56,11 @@ def sugerencias_estudiantes(request):
 
 @login_required
 def lista_citaciones(request):
+    citaciones = Citacion.objects.select_related('estudiante__usuario')
     if request.user.es_estudiante():
-        estudiante = getattr(request.user, 'estudiante', None)
-        citaciones = Citacion.objects.filter(estudiante=estudiante) if estudiante else []
-    else:
-        citaciones = Citacion.objects.select_related('estudiante__usuario')
+        citaciones = citaciones.filter(estudiante__usuario=request.user)
+    elif request.user.es_padre():
+        citaciones = citaciones.filter(estudiante__tutor=request.user)
     return render(request, 'comunicaciones/lista_citaciones.html', {'citaciones': citaciones})
 
 
@@ -106,15 +107,18 @@ def crear_citacion(request):
 
 
 @login_required
+@require_POST
 def cambiar_estado_citacion(request, citacion_id, estado):
     if not _es_staff(request.user):
         return HttpResponseForbidden('No tienes permiso para modificar citaciones.')
 
+    if estado not in (Citacion.Estado.ATENDIDA, Citacion.Estado.NO_ASISTIO):
+        return HttpResponseBadRequest('Elige «Atendida» o «No asistió».')
+
     citacion = get_object_or_404(Citacion, pk=citacion_id)
-    if estado in Citacion.Estado.values:
-        citacion.estado = estado
-        citacion.save()
-        messages.success(request, 'Estado de la citación actualizado.')
+    citacion.estado = estado
+    citacion.save(update_fields=['estado'])
+    messages.success(request, 'Estado de la citación actualizado.')
     return redirect('comunicaciones:lista_citaciones')
 
 

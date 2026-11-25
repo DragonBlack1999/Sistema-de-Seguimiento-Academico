@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block titulo %}Vuelve a abrir el formulario{% endblock %}
+{% block contenido %}
+<h1>Vuelve a abrir el formulario</h1>
+<p>El sistema no pudo verificar el envío. Comprueba la cuenta que tienes abierta y vuelve a intentarlo desde una página recién cargada.</p>
+<a class="btn btn-primary" href="{% url 'accounts:redirigir_dashboard' %}">Volver al inicio</a>
+{% endblock %}

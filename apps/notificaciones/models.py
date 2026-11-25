@@ -76,6 +76,9 @@ class Notificacion(models.Model):
     # Si ya salió al celular. Lo urgente e informativo sale al crearse; lo de
     # atención espera al resumen diario, que es quien marca esto.
     avisada = models.BooleanField('Ya salió al celular', default=False)
+    resumen_aceptado_por = models.ManyToManyField(
+        SuscripcionPush, blank=True, related_name='avisos_aceptados', editable=False,
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:

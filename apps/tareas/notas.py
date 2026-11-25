@@ -9,12 +9,40 @@ guardar, que es donde se ve quién hizo el cambio.
 """
 from decimal import ROUND_HALF_UP, Decimal
 
+from django.db import transaction
 from django.db.models import Exists, OuterRef
 
+from apps.academico.models import AsignacionDocente
 from apps.calificaciones.models import MAXIMO, Actividad, Dimension, Nota, Puntaje
 
 # Una tarea se califica sobre lo que vale la dimensión donde entra.
 MAXIMO_TAREA = MAXIMO[Dimension.HACER]
+
+
+def guardar_con_planilla(tarea, usuario):
+    """Guarda la tarea, su actividad y los totales afectados como una operación."""
+    nueva = tarea.pk is None
+    archivo = tarea.archivo_adjunto
+    subiendo = bool(archivo) and not archivo._committed
+    try:
+        with transaction.atomic():
+            # La siguiente posición de la columna se calcula dentro de la materia.
+            AsignacionDocente.objects.select_for_update().get(pk=tarea.asignacion_id)
+            if not nueva:
+                anterior = type(tarea).objects.select_for_update().get(pk=tarea.pk)
+                tarea.actividad_id = anterior.actividad_id
+            tarea.save()
+            trimestres = sincronizar_actividad(tarea, usuario)
+            if not nueva:
+                if anterior.asignacion_id != tarea.asignacion_id:
+                    recalcular(anterior.asignacion_id, anterior.trimestre, usuario=usuario)
+                for trimestre in trimestres:
+                    recalcular(tarea.asignacion_id, trimestre, usuario=usuario)
+    except Exception:
+        # El almacenamiento de archivos no participa en el rollback de PostgreSQL.
+        if subiendo and archivo._committed:
+            archivo.storage.delete(archivo.name)
+        raise
 
 
 def _siguiente_orden(asignacion_id, trimestre):
@@ -49,8 +77,9 @@ def sincronizar_actividad(tarea, usuario=None):
 
     # El nombre no se copia: `Actividad.etiqueta` lo toma de la tarea.
     cambios = {}
-    if actividad.trimestre != tarea.trimestre:
+    if actividad.trimestre != tarea.trimestre or actividad.asignacion_id != tarea.asignacion_id:
         trimestres.add(actividad.trimestre)
+        cambios['asignacion_id'] = tarea.asignacion_id
         cambios['trimestre'] = tarea.trimestre
         cambios['orden'] = _siguiente_orden(tarea.asignacion_id, tarea.trimestre)
     if cambios:
@@ -128,7 +157,11 @@ def recalcular(asignacion_id, trimestre, estudiantes=None, usuario=None):
         avisar_nota_baja(nota)
 
     # Quien todavía no tenía nota en esa materia la estrena con esta tarea.
-    for estudiante_id in set(estudiantes or []) - existentes:
+    if estudiantes is None:
+        estudiantes = Puntaje.objects.filter(
+            actividad__asignacion_id=asignacion_id, actividad__trimestre=trimestre,
+        ).order_by().values_list('estudiante_id', flat=True).distinct()
+    for estudiante_id in set(estudiantes) - existentes:
         nota = Nota(
             asignacion_id=asignacion_id, estudiante_id=estudiante_id,
             trimestre=trimestre, registrado_por=usuario,

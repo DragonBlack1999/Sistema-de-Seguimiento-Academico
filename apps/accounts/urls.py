@@ -6,6 +6,7 @@ from . import views
 app_name = 'accounts'
 
 urlpatterns = [
+    path('sesion/formulario/', views.sesion_formulario, name='sesion_formulario'),
     path('login/', views.AccountsLoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('', views.redirigir_dashboard, name='redirigir_dashboard'),

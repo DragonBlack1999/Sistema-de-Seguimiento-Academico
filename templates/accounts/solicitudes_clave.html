@@ -57,7 +57,7 @@
                 </div>
               {% endif %}
               <button type="submit" name="accion" value="restablecer" class="btn btn-sm btn-primary"
-                      onclick="return confirm('La contraseña de {{ solicitud.usuario.get_full_name|escapejs }} pasará a ser su carnet. ¿Seguro?');">
+                      data-confirmar="La contraseña de {{ solicitud.usuario.get_full_name }} pasará a ser su carnet. ¿Seguro?">
                 Restablecer
               </button>
               <button type="submit" name="accion" value="rechazar" class="btn btn-sm btn-outline-secondary">

@@ -36,7 +36,7 @@
     <div class="d-flex flex-wrap gap-2 mt-2">
         {% for d in desplegables %}
         <select name="{{ d.clave }}" class="form-select form-select-sm" style="width:auto;"
-                aria-label="{{ d.rotulo }}" onchange="this.form.submit()">
+                aria-label="{{ d.rotulo }}" data-autoenvio>
             <option value="">{{ d.rotulo }}: todos</option>
             {% for valor, texto in d.opciones %}
             <option value="{{ valor }}" {% if d.elegido == valor|stringformat:"s" %}selected{% endif %}>{{ texto }}</option>

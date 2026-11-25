@@ -7,7 +7,7 @@
 <form method="get" class="row g-2 align-items-end mb-4">
     <div class="col-auto">
         <label class="form-label mb-0">Curso</label>
-        <select name="curso" class="form-select" onchange="this.form.submit()">
+        <select name="curso" class="form-select" data-autoenvio>
             {% for c in cursos %}
                 <option value="{{ c.id }}" {% if curso and c.id == curso.id %}selected{% endif %}>{{ c }}</option>
             {% endfor %}
@@ -112,7 +112,7 @@
                             <tr>
                                 <td class="fw-bold small">
                                     {{ fila.periodo.nombre }}
-                                    <form method="post" action="{% url 'academico:eliminar_periodo' fila.periodo.id %}" class="d-inline" onsubmit="return confirm('¿Eliminar este período?');">
+                                    <form method="post" action="{% url 'academico:eliminar_periodo' fila.periodo.id %}" class="d-inline" data-confirmar="¿Eliminar este período?">
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-link btn-sm text-danger p-0" title="Eliminar período">×</button>
                                     </form>
@@ -125,7 +125,7 @@
                             <tr>
                                 <td class="fw-bold small">
                                     {{ fila.periodo.nombre }}
-                                    <form method="post" action="{% url 'academico:eliminar_periodo' fila.periodo.id %}" class="d-inline" onsubmit="return confirm('¿Eliminar este período?');">
+                                    <form method="post" action="{% url 'academico:eliminar_periodo' fila.periodo.id %}" class="d-inline" data-confirmar="¿Eliminar este período?">
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-link btn-sm text-danger p-0" title="Eliminar período">×</button>
                                     </form>
@@ -170,7 +170,7 @@
 .dropzone.dragover > div { border-color: #0d6efd !important; background-color: #e7f1ff; }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 document.querySelectorAll('.materia-chip').forEach(function (chip) {
     chip.addEventListener('dragstart', function (ev) {
         ev.dataTransfer.setData('text/plain', chip.dataset.asignacionId);

@@ -110,8 +110,8 @@ def avisar_falta(estudiante, fecha):
         tipo=Notificacion.Tipo.ASISTENCIA, nivel=Notificacion.Nivel.ATENCION,
         titulo='No asistió a clases',
         mensaje=f'Falta registrada el {fecha:%d/%m/%Y}.',
-        url_estudiante=reverse('asistencia:mi_asistencia'),
-        url_tutor=reverse('padres:asistencia_hijo', args=[estudiante.pk]),
+        url_estudiante=reverse('asistencia:mi_asistencia', query={'mes': fecha.month, 'anio': fecha.year}),
+        url_tutor=reverse('padres:asistencia_hijo', args=[estudiante.pk], query={'mes': fecha.month, 'anio': fecha.year}),
     )
     return True
 
@@ -125,8 +125,8 @@ def avisar_atraso(estudiante, fecha, hora):
         tipo=Notificacion.Tipo.ASISTENCIA, nivel=Notificacion.Nivel.INFORMATIVO,
         titulo='Llegó con atraso',
         mensaje=f'Entró a las {hora:%H:%M} del {fecha:%d/%m/%Y}.',
-        url_estudiante=reverse('asistencia:mi_asistencia'),
-        url_tutor=reverse('padres:asistencia_hijo', args=[estudiante.pk]),
+        url_estudiante=reverse('asistencia:mi_asistencia', query={'mes': fecha.month, 'anio': fecha.year}),
+        url_tutor=reverse('padres:asistencia_hijo', args=[estudiante.pk], query={'mes': fecha.month, 'anio': fecha.year}),
     )
     return True
 

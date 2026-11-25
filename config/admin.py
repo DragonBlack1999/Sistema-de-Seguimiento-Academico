@@ -11,11 +11,15 @@ Se importa desde `config/urls.py`, que es lo que garantiza que corra una vez.
 """
 from django.contrib import admin
 
+from apps.accounts.forms import AdminLoginForm
+
 admin.site.site_header = 'U.E. «Eduardo Abaroa Tarde» · Administración'
 admin.site.site_title = 'Administración del colegio'
 admin.site.index_title = 'Datos del colegio'
 # El enlace del título lleva al sistema, no al admin de nuevo.
 admin.site.site_url = '/'
+# El mismo límite de intentos fallidos que el inicio de sesión del sistema.
+admin.site.login_form = AdminLoginForm
 
 # En qué orden se muestran los grupos, y con qué nombre. Lo que no esté aquí
 # va después, en orden alfabético: así, agregar una aplicación nueva no rompe

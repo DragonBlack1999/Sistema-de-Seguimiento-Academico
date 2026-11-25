@@ -3,10 +3,12 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_GET, require_POST
 
 from . import claves, resumenes, tablero
 from .forms import CambiarClaveForm, CarnetForm, LoginForm, OlvideClaveForm
@@ -21,6 +23,12 @@ class AccountsLoginView(LoginView):
     template_name = 'accounts/login.html'
     authentication_form = LoginForm
     redirect_authenticated_user = True
+
+
+@require_GET
+@never_cache
+def sesion_formulario(request):
+    return JsonResponse({'usuario': str(request.user.pk or ''), 'token': get_token(request)})
 
 
 @login_required
@@ -39,6 +47,9 @@ def redirigir_dashboard(request):
 
 @login_required
 def dashboard_admin(request):
+    if not request.user.es_admin():
+        return HttpResponseForbidden('Solo administración puede acceder al panel de Dirección.')
+
     from apps.accounts import panel_direccion
     from apps.asistencia.services import gestion_vigente
 

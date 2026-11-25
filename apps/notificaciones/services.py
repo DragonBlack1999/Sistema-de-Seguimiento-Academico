@@ -8,7 +8,15 @@ semántica correcta: un estudiante que cambia de curso no debe recibir
 retroactivamente los avisos viejos de su curso nuevo.
 """
 
-from .models import Notificacion
+import json
+
+from django.db import transaction
+from django.db.models import Count, F, Q
+from django.urls import reverse
+from django.utils import timezone
+
+from . import push
+from .models import Notificacion, SuscripcionPush
 
 
 def crear_notificaciones(destinatarios, *, tipo, titulo, url, mensaje='', excluir=None,
@@ -68,41 +76,87 @@ def enviar_resumen_diario():
     abrir nada. Al propio estudiante se le habla de lo suyo, sin repetirle su
     nombre.
     """
-    import collections
-
-    from django.urls import reverse
-
-    from .push import enviar as enviar_al_celular
-
-    pendientes = list(
-        Notificacion.objects.filter(avisada=False)
-        .select_related('estudiante__usuario')
-        .order_by('usuario_id', 'fecha_creacion')
-    )
-    if not pendientes:
+    if not push.hay_push():
         return 0
 
-    grupos = collections.defaultdict(list)
-    for aviso in pendientes:
-        grupos[(aviso.usuario_id, aviso.estudiante_id)].append(aviso)
+    pendientes = Notificacion.objects.filter(avisada=False, nivel=Notificacion.Nivel.ATENCION)
+    grupos = list(pendientes.filter(usuario__suscripciones_push__isnull=False).order_by()
+                  .values_list('usuario_id', 'estudiante_id').distinct())
+    aceptados = 0
+    for usuario_id, estudiante_id in grupos:
+        avisos = pendientes.filter(usuario_id=usuario_id, estudiante_id=estudiante_id)
+        destinos = SuscripcionPush.objects.filter(usuario_id=usuario_id)
+        for destino_id in list(destinos.values_list('pk', flat=True)):
+            if _enviar_resumen_al_dispositivo(avisos, destinos, destino_id):
+                aceptados += 1
 
-    for (usuario_id, _estudiante_id), avisos in grupos.items():
-        if len(avisos) == 1:
-            titulo, mensaje, url = avisos[0].titulo, avisos[0].mensaje, avisos[0].url
-        else:
-            titulo = f'{len(avisos)} avisos {_de_quien(avisos[0], usuario_id)}'
-            # El nombre ya va en el título: repetirlo en cada línea no deja sitio
-            # para lo que de verdad pasó.
-            mensaje = ' · '.join(_sin_el_nombre(aviso) for aviso in avisos[:3])
-            if len(avisos) > 3:
-                mensaje += f' y {len(avisos) - 3} más'
-            url = reverse('notificaciones:lista')
-        enviar_al_celular(
-            [usuario_id], titulo=titulo, mensaje=mensaje[:300], url=url, en_segundo_plano=False,
-        )
+        # Un teléfono caducado deja de ser un destino. Si nadie aceptó, los
+        # avisos quedan pendientes para cuando el usuario active un dispositivo.
+        completos = avisos.annotate(
+            dispositivos=Count('usuario__suscripciones_push', distinct=True),
+            confirmaciones=Count('resumen_aceptado_por', distinct=True,
+                                 filter=Q(resumen_aceptado_por__usuario_id=usuario_id)),
+        ).filter(dispositivos__gt=0, confirmaciones=F('dispositivos'))
+        Notificacion.objects.filter(pk__in=completos.values('pk')).update(avisada=True)
+    return aceptados
 
-    Notificacion.objects.filter(pk__in=[aviso.pk for aviso in pendientes]).update(avisada=True)
-    return len(grupos)
+
+def _enviar_resumen_al_dispositivo(avisos, destinos, destino_id):
+    """Manda a un teléfono lo que todavía no recibió. Devuelve si lo aceptó.
+
+    La red queda **fuera** de la transacción. Enviando con el bloqueo tomado,
+    un teléfono que no responde mantenía bloqueada su fila los diez segundos
+    que tarda el envío en rendirse (`ESPERA` en push.py), y quien justo en ese
+    momento activara o desactivara sus avisos quedaba esperando.
+    """
+    destino, faltantes = _apartar_para(avisos, destinos, destino_id)
+    if destino is None:
+        return False
+
+    codigo = push.enviar_a_suscripcion(destino, json.dumps(_contenido_resumen(faltantes)))
+    if push.aceptado(codigo):
+        destino.ultimo_envio = timezone.now()
+        destino.save(update_fields=['ultimo_envio'])
+        return True
+
+    if codigo in (404, 410):
+        # El teléfono ya no existe; lo apartado se va con él.
+        destino.delete()
+    else:
+        # No llegó: vuelven al montón para el intento siguiente.
+        destino.avisos_aceptados.remove(*faltantes)
+    return False
+
+
+@transaction.atomic
+def _apartar_para(avisos, destinos, destino_id):
+    """Reserva para ese teléfono los avisos que todavía no recibió.
+
+    Se aparta **antes** de salir a la red, en una transacción corta. Dos
+    ejecuciones que coinciden siguen mandando una sola vez: la segunda espera
+    el bloqueo y, cuando lo obtiene, ya no le queda nada que apartar.
+    """
+    destino = destinos.select_for_update().filter(pk=destino_id).first()
+    if destino is None:
+        return None, []
+    faltantes = list(avisos.exclude(resumen_aceptado_por=destino)
+                     .select_related('estudiante__usuario').order_by('fecha_creacion', 'pk'))
+    if not faltantes:
+        return None, []
+    destino.avisos_aceptados.add(*faltantes)
+    return destino, faltantes
+
+
+def _contenido_resumen(avisos):
+    primero = avisos[0]
+    if len(avisos) == 1:
+        return {'titulo': primero.titulo, 'mensaje': primero.mensaje, 'url': primero.url}
+
+    titulo = f'{len(avisos)} avisos {_de_quien(primero, primero.usuario_id)}'
+    mensaje = ' · '.join(_sin_el_nombre(aviso) for aviso in avisos[:3])
+    if len(avisos) > 3:
+        mensaje += f' y {len(avisos) - 3} más'
+    return {'titulo': titulo, 'mensaje': mensaje[:300], 'url': reverse('notificaciones:lista')}
 
 
 def _de_quien(aviso, usuario_id):

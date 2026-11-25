@@ -47,6 +47,12 @@ Todo junto, o nada: si algo falla a mitad de camino, no queda nada escrito.
 | Estudiante de 6° marcado | **Egresa**: su cuenta deja de entrar al sistema |
 | Estudiante de 6° desmarcado | Repite 6° |
 
+Si el estudiante ya tiene una matrícula activa en el nivel y grado que le
+corresponden para el año siguiente, conserva el paralelo en el que fue inscrito.
+Si la inscripción contradice la promoción o el egreso, o si ya hay varias
+matrículas activas para ese estudiante en la nueva gestión, el cierre se
+detiene y señala el caso para que Secretaría lo revise.
+
 Además:
 
 - Se crea la gestión nueva y pasa a ser la activa.

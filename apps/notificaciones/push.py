@@ -50,53 +50,52 @@ def enviar(usuarios, *, titulo, mensaje='', url='/', en_segundo_plano=True):
 
     carga = json.dumps({'titulo': titulo, 'mensaje': mensaje, 'url': url})
     if en_segundo_plano:
-        hilo = threading.Thread(target=_repartir, args=(suscripciones, carga), daemon=True)
+        hilo = threading.Thread(target=_repartir_en_hilo, args=(suscripciones, carga), daemon=True)
         hilo.start()
-    else:
+        return len(suscripciones)
+    return _repartir(suscripciones, carga)
+
+
+def enviar_a_suscripcion(suscripcion, carga):
+    """Código HTTP del proveedor, o None cuando no se obtuvo respuesta."""
+    try:
+        from pywebpush import webpush
+
+        respuesta = webpush(
+            subscription_info={
+                'endpoint': suscripcion.endpoint,
+                'keys': {'p256dh': suscripcion.p256dh, 'auth': suscripcion.auth},
+            },
+            data=carga,
+            vapid_private_key=settings.VAPID_PRIVATE_KEY,
+            vapid_claims={'sub': settings.VAPID_CONTACTO},
+            timeout=ESPERA,
+        )
+        codigo = respuesta.status_code
+    except Exception as error:
+        codigo = getattr(getattr(error, 'response', None), 'status_code', None)
+    if not aceptado(codigo) and codigo not in (404, 410):
+        registro.warning('Push pendiente para la suscripción %s (HTTP %s).', suscripcion.pk, codigo)
+    return codigo
+
+
+def aceptado(codigo):
+    return codigo is not None and 200 <= codigo < 300
+
+
+def _repartir_en_hilo(suscripciones, carga):
+    try:
         _repartir(suscripciones, carga)
-    return len(suscripciones)
+    finally:
+        connections.close_all()
 
 
 def _repartir(suscripciones, carga):
-    """Envía a cada teléfono y limpia las direcciones que ya no existen."""
-    from pywebpush import WebPushException, webpush
-
-    caducadas, enviadas = [], []
-
-    def _uno(suscripcion):
-        try:
-            webpush(
-                subscription_info={
-                    'endpoint': suscripcion.endpoint,
-                    'keys': {'p256dh': suscripcion.p256dh, 'auth': suscripcion.auth},
-                },
-                data=carga,
-                vapid_private_key=settings.VAPID_PRIVATE_KEY,
-                vapid_claims={'sub': settings.VAPID_CONTACTO},
-                timeout=ESPERA,
-            )
-            enviadas.append(suscripcion.pk)
-        except WebPushException as error:
-            codigo = getattr(getattr(error, 'response', None), 'status_code', None)
-            if codigo in (404, 410):
-                # El teléfono desinstaló la app o borró los datos del navegador.
-                caducadas.append(suscripcion.pk)
-            else:
-                registro.warning('No se pudo avisar a %s: %s', suscripcion.usuario_id, error)
-        except Exception as error:                        # noqa: BLE001
-            # Un fallo de red no puede tumbar la pantalla que disparó el aviso.
-            registro.warning('Fallo enviando el aviso a %s: %s', suscripcion.usuario_id, error)
-
-    try:
-        with ThreadPoolExecutor(max_workers=EN_PARALELO) as grupo:
-            list(grupo.map(_uno, suscripciones))
-
-        if caducadas:
-            SuscripcionPush.objects.filter(pk__in=caducadas).delete()
-        if enviadas:
-            SuscripcionPush.objects.filter(pk__in=enviadas).update(ultimo_envio=timezone.now())
-    finally:
-        # El hilo abre su propia conexión a la base: hay que cerrarla.
-        connections.close_all()
-
+    """Distribuye el aviso inmediato y cuenta las respuestas aceptadas."""
+    with ThreadPoolExecutor(max_workers=EN_PARALELO) as grupo:
+        resultados = list(grupo.map(lambda s: enviar_a_suscripcion(s, carga), suscripciones))
+    caducadas = [s.pk for s, codigo in zip(suscripciones, resultados) if codigo in (404, 410)]
+    enviadas = [s.pk for s, codigo in zip(suscripciones, resultados) if aceptado(codigo)]
+    SuscripcionPush.objects.filter(pk__in=caducadas).delete()
+    SuscripcionPush.objects.filter(pk__in=enviadas).update(ultimo_envio=timezone.now())
     return len(enviadas)

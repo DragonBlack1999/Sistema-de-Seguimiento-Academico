@@ -113,3 +113,24 @@ class SolicitudDeClave(models.Model):
         self.atendida_por = por
         self.fecha_atendida = timezone.now()
         self.save(update_fields=['estado', 'atendida_por', 'fecha_atendida'])
+
+
+class IntentoFallido(models.Model):
+    """Un inicio de sesión que no entró. Sirve para frenar a quien prueba claves.
+
+    Se guarda en la base y no en la memoria del programa porque en el servidor
+    corren varios procesos a la vez: cada uno con su propia cuenta, el que
+    prueba claves tendría el límite multiplicado por la cantidad de procesos.
+    """
+
+    usuario = models.CharField('Usuario escrito', max_length=150, db_index=True)
+    ip = models.GenericIPAddressField(null=True, blank=True, db_index=True)
+    fecha = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ['-fecha']
+        verbose_name = 'Intento fallido de inicio de sesión'
+        verbose_name_plural = 'Intentos fallidos de inicio de sesión'
+
+    def __str__(self):
+        return f'{self.usuario} desde {self.ip or "?"} ({self.fecha:%d/%m/%Y %H:%M})'

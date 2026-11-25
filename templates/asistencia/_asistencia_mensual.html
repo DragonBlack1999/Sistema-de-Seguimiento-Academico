@@ -1,0 +1,35 @@
+<form method="get" class="row g-2 align-items-end mb-4">
+    <div class="col-auto">
+        <label class="form-label" for="mes">Mes</label>
+        <select class="form-select" id="mes" name="mes">
+            {% for numero, nombre in meses %}
+                <option value="{{ numero }}"{% if numero == periodo.month %} selected{% endif %}>{{ nombre|capfirst }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="anio">Año</label>
+        <input class="form-control" type="number" id="anio" name="anio" min="1" max="9999" value="{{ periodo|date:'Y' }}" required>
+    </div>
+    <div class="col-auto"><button type="submit" class="btn btn-primary">Ver mes</button></div>
+</form>
+
+<h3 class="h5">{{ periodo|date:"F \d\e Y"|capfirst }}</h3>
+{% include 'asistencia/_resumen.html' with resumen=resumen %}
+
+<table class="table table-striped bg-white shadow-sm mt-3 sa-tabla-apilada">
+    <thead><tr><th>Fecha</th><th class="text-center">Hora de llegada</th><th class="text-center">Estado</th></tr></thead>
+    <tbody>
+    {% for r in registros %}
+        <tr>
+            <td data-principal>{{ r.fecha|date:"l j \d\e F \d\e Y"|capfirst }}</td>
+            <td class="text-center font-monospace" data-rotulo="Llegada">{{ r.hora_llegada|time:"H:i"|default:"—" }}</td>
+            <td class="text-center" data-rotulo="Estado">
+                {% include 'asistencia/_insignia.html' with registro=r %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="3" class="text-center text-muted py-4">No hay registros de asistencia en este mes.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>

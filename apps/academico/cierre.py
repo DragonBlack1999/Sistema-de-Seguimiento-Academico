@@ -16,7 +16,9 @@ Quién pasa lo decide la secretaría, no el sistema. El sistema propone: marca a
 quien aprobó todo y **señala** a quien tiene alguna materia debajo de 51 o no
 tiene ninguna nota cargada, que hoy son la mayoría.
 """
-from django.db import transaction
+from collections import defaultdict
+
+from django.db import connection, transaction
 from django.db.models import Avg
 
 from apps.calificaciones.models import NOTA_APROBACION, Nota
@@ -152,6 +154,10 @@ def cerrar(gestion, *, promovidos, por, copiar_horario=True, copiar_asignaciones
     `promovidos` son los ids de estudiante que la secretaría dejó marcados: los
     que no están en ese conjunto repiten su grado, con su mismo paralelo.
     """
+    # El cierre también debe proteger las matrículas que todavía no existen.
+    # PostgreSQL permite seguir consultándolas mientras serializa las escrituras.
+    with connection.cursor() as cursor:
+        cursor.execute('LOCK TABLE academico_matricula IN SHARE ROW EXCLUSIVE MODE')
     anio_nuevo = revisar(gestion)
     promovidos = set(promovidos or [])
 
@@ -206,15 +212,34 @@ def cerrar(gestion, *, promovidos, por, copiar_horario=True, copiar_asignaciones
     cuenta = {'promovidos': 0, 'repitentes': 0, 'egresados': 0}
     sin_acceso = []
     por_crear = []
+    por_reactivar = []
+    vigentes = defaultdict(list)
+    inactivas = {}
+    for previa in Matricula.objects.filter(curso__gestion=nueva).select_related('curso'):
+        if previa.activa:
+            vigentes[previa.estudiante_id].append(previa)
+        else:
+            inactivas[(previa.estudiante_id, previa.curso_id)] = previa.pk
 
     matriculas = (
         Matricula.objects.filter(curso__gestion=gestion, activa=True)
         .select_related('estudiante', 'curso')
     )
+    procesados = set()
     for matricula in matriculas:
+        if matricula.estudiante_id in procesados:
+            raise NoSePuedeCerrar(f'{matricula.estudiante} tiene más de una matrícula activa en {gestion}.')
+        procesados.add(matricula.estudiante_id)
         pasa = matricula.estudiante_id in promovidos
+        previas = vigentes[matricula.estudiante_id]
+        if len(previas) > 1:
+            raise NoSePuedeCerrar(f'{matricula.estudiante} ya tiene varias matrículas activas en {nueva}. '
+                                  'Revisa sus matrículas antes de cerrar.')
 
         if pasa and matricula.curso.grado >= GRADO_FINAL:
+            if previas:
+                raise NoSePuedeCerrar(f'{matricula.estudiante} figura para egreso y tiene una '
+                                      f'matrícula activa en {nueva}. Revisa su inscripción.')
             # Egresa: no hay 7°. Su historial queda entero; su cuenta deja de
             # entrar, que es lo que se decidió para los egresados.
             cuenta['egresados'] += 1
@@ -232,11 +257,20 @@ def cerrar(gestion, *, promovidos, por, copiar_horario=True, copiar_asignaciones
             )
 
         cuenta['promovidos' if pasa else 'repitentes'] += 1
-        por_crear.append(Matricula(estudiante_id=matricula.estudiante_id, curso=destino))
+        if previas:
+            curso_previo = previas[0].curso
+            if (curso_previo.nivel, curso_previo.grado) != (destino.nivel, destino.grado):
+                raise NoSePuedeCerrar(f'{matricula.estudiante} ya tiene matrícula en {curso_previo}, '
+                                      f'pero el cierre indica {destino}. Revisa su inscripción o promoción.')
+            continue
+        previa_id = inactivas.get((matricula.estudiante_id, destino.pk))
+        if previa_id is not None:
+            por_reactivar.append(previa_id)
+        else:
+            por_crear.append(Matricula(estudiante_id=matricula.estudiante_id, curso=destino))
 
-    # `bulk_create` no llama a `clean()`, así que la regla de «una matrícula por
-    # gestión» se cuida con la restricción de la base: se ignora lo repetido.
-    Matricula.objects.bulk_create(por_crear, batch_size=500, ignore_conflicts=True)
+    Matricula.objects.filter(pk__in=por_reactivar).update(activa=True)
+    Matricula.objects.bulk_create(por_crear, batch_size=500)
 
     # ── 4. Cerrar lo viejo ──
     Matricula.objects.filter(curso__gestion=gestion, activa=True).update(activa=False)

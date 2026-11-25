@@ -89,7 +89,7 @@
                 <h5 class="card-title">Borrar una actividad</h5>
                 {% if borrables %}
                 <form method="post" class="row g-2 align-items-end"
-                      onsubmit="return confirm('Se borrará la actividad con todas sus notas. ¿Seguro?');">
+                      data-confirmar="Se borrará la actividad con todas sus notas. ¿Seguro?">
                     {% csrf_token %}
                     <div class="col-sm-8">
                         <label class="form-label" for="actividadBorrar">Actividad</label>

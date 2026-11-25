@@ -1,12 +1,16 @@
+import calendar
 import datetime
 import io
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import OuterRef, Subquery
+from django.db.models.functions import Coalesce
 from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dates import MONTHS
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
@@ -16,8 +20,10 @@ from apps.comunicaciones.alertas import avisar_atraso, avisar_falta, verificar_a
 
 from .models import Asistencia
 from .services import (
+    RegistroNoValido,
     cerrar_dia,
     cursos_en_capacitacion,
+    error_de_fecha,
     gestion_vigente,
     hora_limite,
     matriculas_del_dia,
@@ -26,6 +32,7 @@ from .services import (
 )
 
 MENSAJE_SOLO_REGENTE = 'Solo el regente o un administrador pueden registrar la asistencia.'
+MARCA_CAPACITACION = 'Clase de capacitación'
 
 # Valor del botón que pide la lista entera del día. Tiene que ser un texto y no
 # una cadena vacía: el buscador en vivo descarta los parámetros vacíos, y sin
@@ -38,12 +45,13 @@ def _puede_registrar(user):
 
 
 def _fecha_pedida(request):
-    texto = request.GET.get('fecha') or request.POST.get('fecha')
-    if texto:
+    texto = request.POST.get('fecha', request.GET.get('fecha'))
+    if texto is not None:
         try:
             return datetime.date.fromisoformat(texto)
         except ValueError:
-            pass
+            if request.method == 'POST':
+                raise RegistroNoValido('Escribe una fecha válida para registrar la asistencia.')
     return timezone.localdate()
 
 
@@ -105,7 +113,7 @@ def puerta(request):
     matriculas = list(matriculas_del_dia(gestion, fecha))
     registros = {
         a.estudiante_id: a
-        for a in Asistencia.objects.filter(fecha=fecha)
+        for a in Asistencia.objects.filter(fecha=fecha, estudiante_id__in=[m.estudiante_id for m in matriculas])
     }
 
     grupos, por_curso = _botones_de_curso(matriculas, registros)
@@ -150,8 +158,11 @@ def puerta(request):
         'consulta': consulta,
         'filas': filas,
         'grupos': grupos,
+        'cursos_para_excel': Curso.objects.select_related('gestion').order_by('-gestion__anio', 'nivel', 'grado', 'paralelo'),
+        'meses': MONTHS.items(),
         'elegido': elegido,
         'sin_eleccion': not consulta and not elegido,
+        'error_fecha': error_de_fecha(gestion, fecha),
         'estados': Asistencia.Estado.choices,
         'hora_limite': hora_limite(),
         'en_capacitacion': list(cursos_en_capacitacion(fecha)),
@@ -175,28 +186,16 @@ def marcar(request, estudiante_id):
 
     gestion = gestion_vigente()
     estudiante = get_object_or_404(Estudiante.objects.select_related('usuario'), pk=estudiante_id)
-    fecha = _fecha_pedida(request)
     estado_pedido = request.POST.get('estado', '')
-
-    if estado_pedido in Asistencia.Estado.values:
-        # El regente eligió el estado a mano (falta justificada, licencia, corrección).
-        asistencia, _ = Asistencia.objects.update_or_create(
-            estudiante=estudiante, fecha=fecha,
-            defaults={
-                'estado': estado_pedido,
-                'hora_llegada': (
-                    timezone.localtime().time().replace(microsecond=0)
-                    if estado_pedido in (Asistencia.Estado.PRESENTE, Asistencia.Estado.ATRASO)
-                    else None
-                ),
-                'registrado_por': request.user,
-            },
-        )
-    else:
+    if estado_pedido and estado_pedido not in Asistencia.Estado.values:
+        return JsonResponse({'error': 'El estado de asistencia no es válido.'}, status=400)
+    try:
+        fecha = _fecha_pedida(request)
         asistencia, _ = registrar_entrada(
-            estudiante, gestion, fecha, request.user,
-            hora=timezone.localtime().time().replace(microsecond=0),
+            estudiante, gestion, fecha, request.user, estado=estado_pedido,
         )
+    except RegistroNoValido as error:
+        return JsonResponse({'error': str(error)}, status=400)
 
     aviso = ''
     if asistencia.estado == Asistencia.Estado.FALTA:
@@ -227,8 +226,12 @@ def cerrar(request):
         return HttpResponseForbidden(MENSAJE_SOLO_REGENTE)
 
     gestion = gestion_vigente()
-    fecha = _fecha_pedida(request)
-    marcados = cerrar_dia(gestion, fecha, request.user)
+    try:
+        fecha = _fecha_pedida(request)
+        marcados = cerrar_dia(gestion, fecha, request.user)
+    except RegistroNoValido as error:
+        messages.error(request, str(error))
+        return redirect('asistencia:puerta')
 
     citaciones = 0
     for estudiante in marcados:
@@ -281,7 +284,15 @@ def capacitacion(request):
     if gestion is None:
         return render(request, 'asistencia/capacitacion.html', {'sin_gestion': True})
 
-    fecha = _fecha_pedida(request)
+    try:
+        fecha = _fecha_pedida(request)
+        if request.method == 'POST':
+            error = error_de_fecha(gestion, fecha, puerta=False)
+            if error:
+                raise RegistroNoValido(error)
+    except RegistroNoValido as error:
+        messages.error(request, str(error))
+        return redirect('asistencia:capacitacion')
     del_dia = list(cursos_en_capacitacion(fecha).filter(gestion=gestion))
     todos = _cursos_con_capacitacion(gestion)
 
@@ -297,7 +308,8 @@ def capacitacion(request):
     matriculas = []
     if curso is not None:
         matriculas = list(
-            Matricula.objects.filter(curso=curso, activa=True)
+            Matricula.objects.filter(curso=curso, activa=True, estudiante__usuario__is_active=True,
+                                     fecha_matricula__lte=fecha)
             .select_related('estudiante__usuario')
             .order_by('estudiante__usuario__last_name', 'estudiante__usuario__first_name')
         )
@@ -315,7 +327,7 @@ def capacitacion(request):
                 estudiante=matricula.estudiante, fecha=fecha,
                 defaults={
                     'estado': estado, 'hora_llegada': None,
-                    'observacion': 'Clase de capacitación',
+                    'observacion': MARCA_CAPACITACION,
                     'registrado_por': request.user,
                 },
             )
@@ -373,47 +385,72 @@ def capacitacion(request):
 
 @login_required
 def capacitacion_excel(request):
-    """Planilla del curso en Excel: una hoja de resumen y una hoja por mes.
-
-    Cubre toda la gestión, no solo el día que se esté viendo en pantalla: lo que
-    se pide para archivar o presentar es el acumulado del curso.
-    """
     if not request.user.es_admin():
         return HttpResponseForbidden(MENSAJE_SOLO_ADMIN)
+    return _excel_curso(request, capacitacion=True)
 
-    gestion = gestion_vigente()
-    if gestion is None:
-        raise Http404('No hay ninguna gestión escolar registrada.')
 
+@login_required
+def puerta_excel(request):
+    if not _puede_registrar(request.user):
+        return HttpResponseForbidden(MENSAJE_SOLO_REGENTE)
+    return _excel_curso(request, capacitacion=False)
+
+
+def _excel_curso(request, *, capacitacion):
+    cursos = Curso.objects.select_related('gestion')
+    if capacitacion:
+        cursos = cursos.filter(gestion=gestion_vigente(), dias_capacitacion__isnull=False).distinct()
     pedido = request.GET.get('curso', '')
-    curso = next((c for c in _cursos_con_capacitacion(gestion) if str(c.pk) == pedido), None)
-    if curso is None:
-        raise Http404('Ese curso no tiene clases de capacitación.')
+    if not pedido.isascii() or not pedido.isdecimal():
+        raise Http404('Elige un curso de la gestión.')
+    curso = get_object_or_404(cursos, pk=pedido)
 
-    matriculas = list(
-        Matricula.objects.filter(curso=curso, activa=True)
-        .select_related('estudiante__usuario')
-        .order_by('estudiante__usuario__last_name', 'estudiante__usuario__first_name')
-    )
-    registros = Asistencia.objects.filter(
-        fecha__year=gestion.anio, estudiante_id__in=[m.estudiante_id for m in matriculas],
-    )
+    periodo = None
+    matriculas = Matricula.objects.filter(curso=curso)
+    registros = Asistencia.objects.order_by()
+    if capacitacion:
+        matriculas = matriculas.filter(activa=True)
+        registros = registros.filter(fecha__year=curso.gestion.anio)
+    else:
+        try:
+            periodo, fin = _limites_del_mes(
+                request.GET.get('anio', curso.gestion.anio),
+                request.GET.get('mes', timezone.localdate().month),
+            )
+        except (ValueError, OverflowError):
+            return HttpResponse('Elige un mes y un año válidos.', status=400)
+        if periodo.year != curso.gestion.anio:
+            return HttpResponse('Elige un curso de la gestión seleccionada.', status=400)
+        registros = registros.filter(fecha__range=(periodo, fin)).exclude(observacion=MARCA_CAPACITACION)
+        # El cierre anual desactiva las matrículas. Para el histórico, se usa
+        # el curso en la fecha de entrada incluso si el alumno cambió de paralelo.
+        inscripciones = Matricula.objects.filter(estudiante_id=OuterRef('estudiante_id'), curso__gestion=curso.gestion)
+        vigentes_al_dia = inscripciones.filter(fecha_matricula__lte=OuterRef('fecha')).order_by('-fecha_matricula', '-pk')
+        primera = inscripciones.order_by('fecha_matricula', 'pk')
+        registros = registros.alias(curso_del_dia=Coalesce(
+            Subquery(vigentes_al_dia.values('curso_id')[:1]), Subquery(primera.values('curso_id')[:1]),
+        )).filter(curso_del_dia=curso.pk)
 
-    fechas = sorted({a.fecha for a in registros})
-    por_estudiante = {}
-    for a in registros:
-        por_estudiante.setdefault(a.estudiante_id, {})[a.fecha] = a
+    matriculas = list(matriculas.select_related('estudiante__usuario')
+                      .order_by('estudiante__usuario__last_name', 'estudiante__usuario__first_name'))
+    registros = list(registros.filter(estudiante_id__in=[m.estudiante_id for m in matriculas]))
+    if not capacitacion and curso.gestion.activa:
+        con_entrada = {r.estudiante_id for r in registros}
+        matriculas = [m for m in matriculas if m.activa or m.estudiante_id in con_entrada]
 
     # La importación es local: openpyxl solo se carga si alguien descarga.
-    from .planillas import planilla_de_capacitacion
+    from .planillas import planilla_por_fechas
 
-    libro = planilla_de_capacitacion(curso, gestion, matriculas, fechas, por_estudiante)
+    libro = planilla_por_fechas(curso, matriculas, registros, capacitacion=capacitacion, periodo=periodo)
 
     memoria = io.BytesIO()
     libro.save(memoria)
     memoria.seek(0)
 
-    nombre = f'asistencia-{slugify(str(curso))}.xlsx'
+    tipo = 'capacitacion' if capacitacion else 'entrada'
+    sufijo = f'-{periodo:%Y-%m}' if periodo else ''
+    nombre = f'asistencia-{tipo}-{slugify(str(curso))}{sufijo}.xlsx'
     respuesta = HttpResponse(
         memoria.read(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -429,9 +466,27 @@ def mi_asistencia(request):
     estudiante = getattr(request.user, 'estudiante', None)
     if estudiante is None:
         return HttpResponseForbidden('Tu usuario no tiene un perfil de estudiante asociado.')
+    return mostrar_asistencia_mensual(request, estudiante, 'asistencia/mi_asistencia.html')
 
-    registros = Asistencia.objects.filter(estudiante=estudiante)
-    resumen = resumen_por_estado(registros)
-    return render(request, 'asistencia/mi_asistencia.html', {
-        'registros': registros, 'estudiante': estudiante, 'resumen': resumen,
+
+def _limites_del_mes(anio, mes):
+    inicio = datetime.date(int(anio), int(mes), 1)
+    return inicio, inicio.replace(day=calendar.monthrange(inicio.year, inicio.month)[1])
+
+
+def mostrar_asistencia_mensual(request, estudiante, plantilla):
+    """Muestra el mes del estudiante al que la vista ya autorizó el acceso."""
+    hoy = timezone.localdate()
+    try:
+        inicio, fin = _limites_del_mes(request.GET.get('anio', hoy.year), request.GET.get('mes', hoy.month))
+    except (ValueError, OverflowError):
+        messages.warning(request, 'Elige un mes y un año válidos.')
+        return redirect(request.path)
+
+    registros = list(Asistencia.objects.filter(
+        estudiante=estudiante, fecha__range=(inicio, fin),
+    ).only('fecha', 'hora_llegada', 'estado').order_by('-fecha'))
+    return render(request, plantilla, {
+        'registros': registros, 'estudiante': estudiante, 'resumen': resumen_por_estado(registros),
+        'periodo': inicio, 'meses': MONTHS.items(),
     })

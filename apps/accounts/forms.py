@@ -1,8 +1,40 @@
+from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django import forms
 
+from . import intentos
 
-class LoginForm(AuthenticationForm):
+
+class LimiteDeIntentosMixin:
+    """Frena a quien prueba contraseñas: ver `apps/accounts/intentos.py`."""
+
+    bloqueado = False
+
+    def clean(self):
+        usuario = self.cleaned_data.get('username')
+        ip = intentos.ip_de(self.request)
+        minutos = intentos.minutos_de_bloqueo(usuario, ip)
+        if minutos:
+            self.bloqueado = True
+            raise forms.ValidationError(
+                'Hubo demasiados intentos fallidos. Por seguridad, espera %(minutos)s '
+                'minuto(s) y vuelve a intentarlo. Si olvidaste tu contraseña, pídela '
+                'con «¿Olvidaste tu contraseña?».',
+                code='demasiados_intentos', params={'minutos': minutos},
+            )
+        try:
+            datos = super().clean()
+        except forms.ValidationError:
+            # Contraseña correcta pero sin permiso (el admin para quien no es
+            # personal) no es probar claves: no cuenta.
+            if self.user_cache is None and usuario:
+                intentos.registrar_fallo(usuario, ip)
+            raise
+        intentos.registrar_exito(usuario)
+        return datos
+
+
+class LoginForm(LimiteDeIntentosMixin, AuthenticationForm):
     username = forms.CharField(
         label='Usuario (RUDE para estudiantes, CI para padres)',
         widget=forms.TextInput(attrs={'autofocus': True, 'class': 'form-control'}),
@@ -11,6 +43,10 @@ class LoginForm(AuthenticationForm):
         label='Contraseña (Carnet de Identidad)',
         widget=forms.PasswordInput(attrs={'class': 'form-control'}),
     )
+
+
+class AdminLoginForm(LimiteDeIntentosMixin, AdminAuthenticationForm):
+    """El ingreso al admin, con el mismo límite: si no, sería la puerta trasera."""
 
 
 class CambiarClaveForm(PasswordChangeForm):

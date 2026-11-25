@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import Usuario
+from .models import IntentoFallido, Usuario
 
 
 @admin.register(Usuario)
@@ -50,3 +50,16 @@ class UsuarioAdmin(UserAdmin):
     @admin.display(description='Nombre', ordering='last_name')
     def nombre_completo(self, obj):
         return obj.get_full_name() or '—'
+
+
+@admin.register(IntentoFallido)
+class IntentoFallidoAdmin(admin.ModelAdmin):
+    """Para ver quién está probando claves, y desbloquear a alguien borrando sus fallos."""
+
+    list_display = ('usuario', 'ip', 'fecha')
+    search_fields = ('usuario', 'ip')
+    date_hierarchy = 'fecha'
+    readonly_fields = ('usuario', 'ip', 'fecha')
+
+    def has_add_permission(self, request):
+        return False

@@ -50,6 +50,30 @@
   </form>
 </div>
 
+<form method="get" action="{% url 'asistencia:puerta_excel' %}" class="d-flex flex-wrap align-items-center gap-2 mt-3">
+  {% regroup cursos_para_excel by gestion.anio as gestiones_excel %}
+  <span>Planilla de entrada por curso</span>
+  <label for="anioExcel" class="form-label mb-0">Año</label>
+  <select id="anioExcel" name="anio" class="form-select form-select-sm w-auto" required>
+    {% for grupo in gestiones_excel %}
+      <option value="{{ grupo.grouper|stringformat:'d' }}"{% if grupo.grouper == gestion.anio %} selected{% endif %}>{{ grupo.grouper|stringformat:'d' }}</option>
+    {% endfor %}
+  </select>
+  <label for="mesExcel" class="form-label mb-0">Mes</label>
+  <select id="mesExcel" name="mes" class="form-select form-select-sm w-auto" required>
+    {% for numero, nombre in meses %}
+      <option value="{{ numero }}"{% if numero == fecha.month %} selected{% endif %}>{{ nombre|capfirst }}</option>
+    {% endfor %}
+  </select>
+  <label for="cursoExcel" class="form-label mb-0">Curso</label>
+  <select id="cursoExcel" name="curso" class="form-select form-select-sm w-auto" required>
+    <option value="">Elegir curso</option>
+    {% for curso in cursos_para_excel %}
+      <option value="{{ curso.pk|stringformat:'d' }}" data-anio="{{ curso.gestion.anio|stringformat:'d' }}"{% if elegido == curso.pk|stringformat:'d' %} selected{% endif %}>{{ curso }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-sm btn-outline-primary">Descargar Excel</button>
+</form>
 
 <div class="row g-2 mt-3">
   {% with r=resumen %}
@@ -121,18 +145,30 @@
 </div>
 
 <form method="post" action="{% url 'asistencia:cerrar' %}"
-      onsubmit="return confirm('Se marcará como FALTA a todos los que no fueron registrados hoy. ¿Continuar?');">
+      data-confirmar="Se marcará como FALTA a todos los que no fueron registrados hoy. ¿Continuar?">
   {% csrf_token %}
   <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
-  <button type="submit" class="btn btn-outline-danger">Cerrar el día</button>
+  <button type="submit" class="btn btn-outline-danger" {% if error_fecha %}disabled{% endif %}>Cerrar el día</button>
+  {% if error_fecha %}<span class="text-danger">{{ error_fecha }}</span>{% endif %}
   <span class="text-muted small ms-2">
     Úsalo cuando ya no entre nadie más: los que quedaron sin registrar pasan a falta.
   </span>
 </form>
 
 <script src="{% static_v 'js/busqueda-viva.js' %}"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
+  const anioExcel = document.getElementById('anioExcel');
+  const cursoExcel = document.getElementById('cursoExcel');
+  function filtrarCursosExcel() {
+    for (const opcion of cursoExcel.options) {
+      if (!opcion.value) continue;
+      opcion.hidden = opcion.disabled = opcion.dataset.anio !== anioExcel.value;
+      if (opcion.disabled && opcion.selected) cursoExcel.value = '';
+    }
+  }
+  anioExcel.addEventListener('change', filtrarCursosExcel);
+  filtrarCursosExcel();
   const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
   const fecha = "{{ fecha|date:'Y-m-d' }}";
   const pendientes = document.getElementById('contadorPendientes');
@@ -149,7 +185,12 @@
   // dejar de valer —un curso recién elegido viajando con la búsqueda vieja— y
   // la pantalla mostraría una cosa con la otra marcada.
   formulario.addEventListener('change', function (evento) {
-    if (evento.target.name === 'curso') campoBusqueda.value = '';
+    if (evento.target.name === 'curso') {
+      campoBusqueda.value = '';
+      if (anioExcel.value === "{{ gestion.anio|stringformat:'d' }}") {
+        cursoExcel.value = evento.target.value === 'todos' ? '' : evento.target.value;
+      }
+    }
   }, true);
   formulario.addEventListener('input', function (evento) {
     if (evento.target !== campoBusqueda) return;
@@ -186,7 +227,11 @@
         headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded'},
         body: cuerpo,
       });
-      if (!respuesta.ok) { alert('No se pudo registrar. Revisa tu sesión.'); return; }
+      if (!respuesta.ok) {
+        const datos = await respuesta.json().catch(() => ({}));
+        alert(datos.error || 'No se pudo registrar. Revisa tu sesión.');
+        return;
+      }
       const datos = await respuesta.json();
 
       const insignia = document.createElement('span');

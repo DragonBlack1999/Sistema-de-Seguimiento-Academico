@@ -14,7 +14,7 @@ from django.shortcuts import render
 from apps.academico.models import Estudiante, Matricula
 from apps.accounts import resumenes
 from apps.asistencia.models import Asistencia
-from apps.asistencia.services import resumen_por_estado
+from apps.asistencia.views import mostrar_asistencia_mensual
 from apps.calificaciones.services import gestion_actual, notas_de_gestion
 from apps.calificaciones.services import pivotar_notas
 from apps.tareas.models import EntregaTarea, Tarea
@@ -83,10 +83,7 @@ def asistencia_hijo(request, estudiante_id):
     if hijo is None:
         return HttpResponseForbidden(MENSAJE_SIN_PERMISO)
 
-    registros = Asistencia.objects.filter(estudiante=hijo)
-    return render(request, 'padres/asistencia_hijo.html', {
-        'hijo': hijo, 'registros': registros, 'resumen': resumen_por_estado(registros),
-    })
+    return mostrar_asistencia_mensual(request, hijo, 'padres/asistencia_hijo.html')
 
 
 @login_required

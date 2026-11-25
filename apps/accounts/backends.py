@@ -46,6 +46,6 @@ class CarnetBackend(BaseBackend):
     def get_user(self, user_id):
         Usuario = get_user_model()
         try:
-            return Usuario.objects.get(pk=user_id)
+            return Usuario.objects.get(pk=user_id, is_active=True)
         except Usuario.DoesNotExist:
             return None

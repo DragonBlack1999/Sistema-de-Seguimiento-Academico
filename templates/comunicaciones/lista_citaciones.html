@@ -24,8 +24,14 @@
             </td>
             {% if user.es_admin or user.es_profesor %}
             <td>
-                <a class="btn btn-sm btn-outline-success" href="{% url 'comunicaciones:cambiar_estado_citacion' c.id 'ATENDIDA' %}">Atendida</a>
-                <a class="btn btn-sm btn-outline-secondary" href="{% url 'comunicaciones:cambiar_estado_citacion' c.id 'NO_ASISTIO' %}">No asistió</a>
+                <form method="post" class="d-inline" action="{% url 'comunicaciones:cambiar_estado_citacion' c.id 'ATENDIDA' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-success">Atendida</button>
+                </form>
+                <form method="post" class="d-inline" action="{% url 'comunicaciones:cambiar_estado_citacion' c.id 'NO_ASISTIO' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">No asistió</button>
+                </form>
             </td>
             {% endif %}
         </tr>

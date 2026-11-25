@@ -40,14 +40,17 @@ quienes vayan a probar.
 > deja de apuntarlos. Al servidor de prueba **no se sube `media/` ni el
 > `archivos.zip` de ningún respaldo**.
 
-**Tener el código en un repositorio.** Railway despliega desde GitHub (o desde
-la consola con `railway up`). El repositorio va **privado**. El `.gitignore` ya
-deja fuera lo que nunca debe subir: `.env`, `media/`, `respaldos/`.
+**Tener el código en GitHub, y al día.** Railway despliega desde GitHub (o
+desde la consola con `railway up`). El repositorio va **privado**. El
+`.gitignore` ya deja fuera lo que nunca debe subir: `.env`, `media/`,
+`respaldos/` y la configuración del demo.
+
+Railway despliega **lo que está en GitHub, no lo que está en la laptop**. Si
+hay commits sin subir, se despliega la versión vieja sin que nada avise:
 
 ```
-git init
-git add .
-git commit -m "Sistema de Seguimiento Académico"
+git status -sb          mira si dice "ahead"
+git push
 ```
 
 ---
@@ -92,6 +95,15 @@ en `.env.ejemplo`. Las imprescindibles:
 
 `ALLOWED_HOSTS` no hace falta: el sistema toma el dominio que Railway le da.
 
+**Opcionales, con valores por omisión razonables.** Solo se agregan si hay que
+mover el límite de intentos de ingreso:
+
+| Variable | Por omisión | Qué hace |
+|---|---|---|
+| `LOGIN_INTENTOS_POR_USUARIO` | `5` | fallos seguidos antes de bloquear esa cuenta |
+| `LOGIN_INTENTOS_POR_IP` | `30` | fallos desde una misma dirección, con cualquier cuenta |
+| `LOGIN_BLOQUEO_MINUTOS` | `15` | cuánto dura el bloqueo y la ventana en que se cuenta |
+
 ## 3. El disco para los archivos subidos
 
 Sin esto, **cada actualización borra las tareas y las fotos que hayan subido**:
@@ -107,12 +119,18 @@ Railway, el servicio Postgres → **Variables** → copiar `DATABASE_PUBLIC_URL`
 
 ```
 set URL=postgresql://postgres:...@...proxy.rlwy.net:12345/railway
-"C:\Program Files\PostgreSQL\16\bin\pg_restore.exe" --no-owner --no-privileges -d "%URL%" "respaldos\para-railway\2026-09-27_002113\base.dump"
+"C:\Program Files\PostgreSQL\16\bin\pg_restore.exe" --no-owner --no-privileges -d "%URL%" "demo\demo.dump"
 ```
 
-Ese archivo es la base de prueba ya armada: 402 estudiantes con nombres
-inventados, 815 cuentas (con sus familias), 6.030 marcas de asistencia, 1.171
-notas de trimestre y 18 tareas con sus entregas.
+`demo\demo.dump` es la base de prueba ya armada, y viaja con el código: 402
+estudiantes con nombres inventados, 815 cuentas con sus familias, 20.502 marcas
+de asistencia de 51 días de clase, 12.519 trimestres de notas en los dieciocho
+cursos y 121 tareas con sus entregas calificadas. Es la misma que usa la
+demostración de la laptop, así que lo que se ve en internet y lo que se muestra
+en una presentación son el mismo colegio.
+
+Si hiciera falta rearmarla desde cero, los comandos del paso 0 la reconstruyen;
+`datos_de_ejemplo --cursos todos --trimestres 3` es lo que la deja llena.
 
 `--no-owner` es necesario: el dueño de las tablas aquí es `academico_app`, un
 usuario que allá no existe.
@@ -136,6 +154,16 @@ Para comprobar que llegó todo, comparar con el `informe.txt` de ese respaldo:
 3. Abrirlo **en un teléfono**, activar los avisos y provocar uno (marcar una
    falta desde la puerta, por ejemplo). Es lo único que no se puede probar en la
    laptop: los avisos al celular necesitan HTTPS de verdad.
+4. **Comprobar que se ve la dirección de cada quien, no la del proxy.** Falla
+   un ingreso a propósito desde el teléfono (con datos, no por el wifi del
+   colegio) y otro desde la laptop. En `/admin/` → *Intentos fallidos* tienen
+   que quedar **dos direcciones distintas**.
+
+   Si queda una sola, el límite por dirección está contando a todo el colegio
+   junto: treinta fallos entre todos dejarían a todos fuera quince minutos.
+   La salida rápida es subir `LOGIN_INTENTOS_POR_IP` a algo alto (500) hasta
+   corregir de dónde se lee la dirección real (`ip_de`, en
+   `apps/accounts/intentos.py`).
 
 ### En el teléfono
 
